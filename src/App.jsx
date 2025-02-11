@@ -1,10 +1,17 @@
 import React from 'react'
-import Survey from './Pages/SurveyPage'
+import { BrowserRouter, Route, Router, Routes } from 'react-router-dom'
+import SurveyPage from './Pages/SurveyPage'
+import SurveyResponsePage from './Pages/SurveyResponsePage'
 
 const App = () => {
   return (
     <React.Fragment>
-      <Survey/>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<SurveyPage />} />
+          <Route path="/responses" element={<SurveyResponsePage/>} />
+        </Routes>
+      </BrowserRouter>
     </React.Fragment>
   )
 }

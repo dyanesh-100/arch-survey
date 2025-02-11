@@ -1,7 +1,25 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom';
 
 const SurveyQuestionsComponent = ({group,questions}) => {
-  
+  const [responses, setResponses] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
+  const handleChange = (question, value) => {
+    setResponses((prev) => ({
+      ...prev,
+      [question]: value,
+    }));
+  };
+
+  const handleSubmit = () => {
+    localStorage.setItem("surveyResponses", JSON.stringify(responses));
+    setSubmitted(true)
+    alert("Responses saved! You can view them on the response page.");
+  };
+  const handleViewResponse = () => {
+    navigate("/responses");
+  }
   return (
     <div className="w-3/4 p-6 pb-8 overflow-auto">
       <h2 className="text-xl font-bold mb-4">{group}</h2>
@@ -15,7 +33,10 @@ const SurveyQuestionsComponent = ({group,questions}) => {
                   <input 
                     className="mr-2" 
                     type="radio" 
-                    name={`q${index}`} 
+                    name={`${group}-q${index}`} 
+                    checked={responses[item.question] === option}
+                    value={option}
+                    onChange={() => handleChange(item.question, option)}
                    />
                   {option}
                 </label>
@@ -23,9 +44,14 @@ const SurveyQuestionsComponent = ({group,questions}) => {
             </div>
           </div>
         ))}
-        <button className="bg-blue-500 text-white p-2 rounded" >
+        <button className="bg-blue-500 text-white p-2 rounded" onClick={handleSubmit}>
             Submit
         </button>
+        {submitted && (
+          <button className="bg-green-500 text-white p-2 rounded ml-4" onClick={handleViewResponse}>
+            View Response
+          </button>
+        )}
       </div>
     </div>
   )

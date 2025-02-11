@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import SideBarComponent from '../Components/SideBarComponent';
 import SurveyQuestionsComponent from '../Components/SurveyQuestionsComponent';
 
+
 const surveyData = {
     "General Understanding of Program Architecture": [
     {
@@ -259,7 +260,7 @@ const surveyData = {
   
 
 const SurveyPage = () => {
-  const [selectedGroup, setSelectedGroup] = useState(Object.keys(surveyData)[0])      
+  const [selectedGroup, setSelectedGroup] = useState(Object.keys(surveyData)[0])   
   return (
     <div className="flex h-screen bg-gray-100">
         <SideBarComponent
