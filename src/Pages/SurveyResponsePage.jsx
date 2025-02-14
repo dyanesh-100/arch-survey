@@ -23,9 +23,9 @@ const SurveyResponsePage = () => {
   };
 
   return (
-    <div className="w-3/4 p-6">
+    <div className="w-full p-6">
       <h2 className="text-xl font-bold mb-4">Survey Responses</h2>
-      <pre className="bg-gray-100 p-4 rounded shadow">
+      <pre className="bg-gray-100 w-full p-4 rounded shadow whitespace-pre-wrap break-words">
         {JSON.stringify(responses, null, 2)}
       </pre>
       <button className="bg-blue-500 text-white p-2 rounded mt-4" onClick={() => navigate("/")}>
