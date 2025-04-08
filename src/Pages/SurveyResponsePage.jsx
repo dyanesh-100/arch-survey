@@ -1,22 +1,51 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axiosInstanceDirectus from "../axiosInstanceDirectus";
 
 const SurveyResponsePage = () => {
-  const [responses, setResponses] = useState({});
+  const [responses, setResponses] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedResponses = localStorage.getItem("surveyResponses");
-    if (storedResponses) {
-      setResponses(JSON.parse(storedResponses));
-    }
+    axiosInstanceDirectus
+      .get(`/survey_responses`)
+      .then((response) => {
+        const fetchedData = response.data.data;
+        
+        const flattenedResponses = fetchedData.map(item => {
+          const flattened = { ...item };
+          
+          item.response.forEach(({ fieldName, response }) => {
+            flattened[fieldName] = response;
+          });
+          
+          delete flattened.response;
+          
+          return flattened;
+        });
+
+        setResponses(flattenedResponses);
+      })
+      .catch((error) => console.error("Error fetching application details:", error));
   }, []);
-  const handleDownload = () => {
-    const responseText = JSON.stringify(responses, null, 2); 
-    const blob = new Blob([responseText], { type: "text/plain" });
+
+  const downloadCSV = () => {
+    if (responses.length === 0) return;
+
+    const filteredKeys = Object.keys(responses[0]).filter(key => key !== "_id" && key !== "__v"); 
+
+    let csvContent = filteredKeys.join(",") + "\n";
+
+    responses.forEach(response => {
+      let row = filteredKeys.map(key => `"${response[key] ?? ""}"`).join(",");
+      csvContent += row + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "survey_responses.txt";
+    link.href = url;
+    link.setAttribute("download", "survey_responses.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -24,21 +53,49 @@ const SurveyResponsePage = () => {
 
   return (
     <div className="w-full p-6">
-      <h2 className="text-xl font-bold mb-4">Survey Responses</h2>
-      <pre className="bg-gray-100 w-full p-4 rounded shadow whitespace-pre-wrap break-words">
-        {JSON.stringify(responses, null, 2)}
-      </pre>
-      <button className="bg-blue-500 text-white p-2 rounded mt-4" onClick={() => navigate("/")}>
+      <h1 className="text-2xl font-semibold mb-4">Survey Responses</h1>
+
+      {responses.length === 0 ? (
+        <p className="text-gray-500">No responses found.</p>
+      ) : (
+        <>
+          <button
+            className="bg-green-500 text-white p-2 rounded mb-4"
+            onClick={downloadCSV}
+          >
+            Download CSV
+          </button>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white border border-gray-300 shadow-md">
+              <thead className="bg-gray-200">
+                <tr>
+                  {Object.keys(responses[0])
+                    .filter(key => key !== "_id" && key !== "__v") 
+                    .map((key) => (
+                      <th key={key} className="border p-2 text-left">{key}</th>
+                    ))}
+                </tr>
+              </thead>
+              <tbody>
+                {responses.map((response, index) => (
+                  <tr key={index} className="hover:bg-gray-100">
+                    {Object.keys(response)
+                      .filter(key => key !== "_id" && key !== "__v")
+                      .map((key) => (
+                        <td key={key} className="border p-2">{String(response[key])}</td>
+                      ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      <button className="bg-blue-500 text-white p-2 rounded mt-4" onClick={() => navigate("/landingpage")}>
         Go Back
-      </button>
-      <button
-        onClick={handleDownload}
-        className="mt-4 ml-4 bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        Download Responses
       </button>
     </div>
   );
 };
-
 export default SurveyResponsePage;

@@ -1,8 +1,8 @@
-import React from 'react'
+import React from 'react';
 
-const SideBarComponent = ({groups,selectedGroup,onSelectGroup}) => {
+const SideBarComponent = ({ groups, selectedGroup, onSelectGroup }) => {
   return (
-    <div className="w-1/4 bg-white p-4 shadow-md h-screen overflow-hidden">
+    <div className="w-1/4 bg-white p-4 shadow-md h-screen overflow-auto">
       <h2 className="text-lg font-semibold mb-4">Survey Groups</h2>
       <ul>
         {groups.map((group) => (
@@ -18,7 +18,7 @@ const SideBarComponent = ({groups,selectedGroup,onSelectGroup}) => {
         ))}
       </ul>
     </div>
-  )
-}
+  );
+};
 
-export default SideBarComponent
+export default SideBarComponent;
