@@ -6,7 +6,7 @@ import ApplicationSearchPage from './Pages/ApplicationSearchPage';
 import ConfigurationPage from './Pages/ConfigurationPage';
 import LoginPage from './Pages/LoginPage';
 import { startTokenRefresh } from './Services/authService';
-import { useGlobalContext } from "./context/GlobalContext"; 
+import { useGlobalContext } from "./Context/GlobalContext"; 
 import UserLandingPage from './Pages/UserLandingPage';
 const ADMIN_UUID = "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f";
 const App = () => {

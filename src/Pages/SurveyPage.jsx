@@ -3,7 +3,7 @@ import SurveyQuestionsComponent from "../Components/SurveyQuestionsComponent";
 import ApplicationMetaDataComponent from "../Components/ApplicationMetaDataComponent";
 import { useParams } from "react-router-dom";
 import TabNavigation from "../Components/TabNavigation";
-import { useGlobalContext } from "../context/GlobalContext"; 
+import { useGlobalContext } from "../Context/GlobalContext"; 
 import { useApiService } from "../Services/apiService";
 import axiosInstanceDirectus from "../axiosInstanceDirectus";
 import FallbackScreen from "../Components/FallBackScreen";

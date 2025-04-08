@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosInstanceDirectus from "../axiosInstanceDirectus";
-import { useGlobalContext } from "../context/GlobalContext";
+import { useGlobalContext } from "../Context/GlobalContext";
 
 export const useApiService = () => {
   const {

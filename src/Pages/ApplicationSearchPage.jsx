@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ApplicationList from "../Components/ApplicationList";
 import LogoutButton from "../Components/LogoutButton";
-import { useGlobalContext } from "../context/GlobalContext"; 
+import { useGlobalContext } from "../Context/GlobalContext"; 
 import { useApiService } from "../Services/apiService";
 
 const ApplicationSearchPage = () => {
