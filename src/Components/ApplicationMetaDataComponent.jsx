@@ -1,7 +1,6 @@
 import React from "react";
 
-const ApplicationMetaDataComponent = ({ application, responseScores }) => {
-
+const ApplicationMetaDataComponent = ({ application }) => {
   if (!application) return null; 
   
   return (
@@ -15,20 +14,26 @@ const ApplicationMetaDataComponent = ({ application, responseScores }) => {
           <p className="text-sm text-gray-500">Application ID</p>
           <p className="font-medium">{application.applicationId}</p>
         </div>
-
+        <div>
+          <p className="text-sm text-gray-500">Business Owner</p>
+          <p className="font-medium">{application.businessOwner.split('@')[0]}</p>
+        </div>
         <div>
           <p className="text-sm text-gray-500">Department</p>
           <p className="font-medium">{application.applicationDepartment}</p>
         </div>
-
-          <div>
-            <p className="text-sm text-gray-500">IT Owner</p>
-            <p className="font-medium">{application.itOwner}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Business Unit</p>
-            <p className="font-medium">{application.businessUnit}</p>
-          </div>
+        <div>
+          <p className="text-sm text-gray-500">IT Owner</p>
+          <p className="font-medium">{application.itOwner.split('@')[0]}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Business Unit</p>
+          <p className="font-medium">{application.businessUnit}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Engineering Owner</p>
+          <p className="font-medium">{application.engineeringOwner.split('@')[0]}</p>
+        </div>
       </div>
 
         <>

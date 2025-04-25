@@ -19,7 +19,7 @@ const LoginPage = () => {
     
     try {
       await login(email, password);
-      fetchUserData();
+      await fetchUserData();
       alert("Login successful!");
       navigate("/landingpage");
       

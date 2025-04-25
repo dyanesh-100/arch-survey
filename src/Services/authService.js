@@ -19,7 +19,6 @@ export const login = async (email, password) => {
     const nextRefreshTime = Date.now() + REFRESH_INTERVAL;
     localStorage.setItem("next_refresh_time", nextRefreshTime.toString());
     localStorage.setItem("isAuthenticated", "true");
-
     startTokenRefresh();
     return response.data;
   } catch (error) {

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Route, Routes,Navigate } from 'react-router-dom';
+import { startTokenRefresh } from './Services/authService';
+import { useGlobalContext } from "./Context/GlobalContext"; 
 import SurveyPage from './Pages/SurveyPage';
 import SurveyResponsePage from './Pages/SurveyResponsePage';
 import ApplicationSearchPage from './Pages/ApplicationSearchPage';
-import ConfigurationPage from './Pages/ConfigurationPage';
 import LoginPage from './Pages/LoginPage';
-import { startTokenRefresh } from './Services/authService';
-import { useGlobalContext } from "./Context/GlobalContext"; 
 import UserLandingPage from './Pages/UserLandingPage';
+import DataUploadPage from './Pages/DataUploadPage';
+
 const ADMIN_UUID = "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f";
 const App = () => {
   const [role, setRole] = useState(null);
@@ -32,7 +33,7 @@ const App = () => {
                 } />
         <Route path="/survey/:applicationUUID" element={<SurveyPage />} />
         <Route path="/responses" element={<SurveyResponsePage />} />
-        <Route path="/fieldmapping" element={<ConfigurationPage />} />
+        <Route path="/upload/:uploadType" element={<DataUploadPage />} />
       </Routes>
     </BrowserRouter>
   );

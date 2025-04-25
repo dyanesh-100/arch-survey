@@ -6,8 +6,10 @@ export const useApiService = () => {
   const {
     applications, setApplications,
     userData, setUserData,
+    userDataByEmail,setUserDataByEmail,
     applicationById, setApplicationById,
     surveyData, setSurveyData,
+    stakeHoldersData,setStakeHoldersData,
     selectedGroupIndex, setSelectedGroupIndex,
     loading, setLoading,
     setSurveyResponseByUserId,
@@ -45,7 +47,37 @@ export const useApiService = () => {
       console.error("Error fetching user data", error);
     }
   };
-
+  const fetchUserDataByEmail = async (email) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8055/users?filter[email][_eq]=${email}`,
+        { withCredentials: true }
+      );
+      if (response.data && response.data.data) {
+        setUserDataByEmail(response.data.data);
+        return response.data.data;
+      } else {
+        console.error("Invalid user data format:", response.data);
+        setUserDataByEmail([]);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching user data", error);
+      return [];
+    }
+  };
+  const patchUserData = async (role) => {
+    try {
+      const response = await axios.patch("http://localhost:8055/users/me",{ stakeholder: role }, { withCredentials: true });
+      if (error.response?.status === 200) {
+        return
+      } else {
+        console.error("something went wrong:", response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching user data", error);
+    }
+  };
   const fetchApplicationById = async (applicationUUID) => {
     try {
       setLoading(true);
@@ -56,16 +88,15 @@ export const useApiService = () => {
         console.error("Application not found");
       }
     } catch (error) {
-      console.error("Error fetching application details:", error);
+      console.error("something went wrong:", error);
     } finally {
       setLoading(false);
     }
   };
-
   const fetchSurveyData = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstanceDirectus.get("/surveys?fields=surveyId,surveyTitle,createdAt,updatedAt,question_groups.groupId,question_groups.groupName,question_groups.questions.questionId,question_groups.questions.question,question_groups.questions.responseType,question_groups.questions.fieldName,question_groups.questions.options");
+      const response = await axiosInstanceDirectus.get("/surveys?fields=surveyId,surveyTitle,question_groups.groups.groupId,question_groups.groups.groupName,question_groups.groups.questions.questions.*");
       if (response.data && response.data.data.length > 0) {
         setSurveyData(response.data.data[0]);
         setSelectedGroupIndex(0);
@@ -76,19 +107,50 @@ export const useApiService = () => {
       setLoading(false);
     }
   };
+  const fetchStakeholdersDataByEmail = async (email) => {
+    try {
+      const response = await axiosInstanceDirectus.get(
+        `/application_stakeholders?filter[email][_eq]=${email}`
+      );
+      if (response.data && response.data.data) {
+        return response.data.data;
+      } else {
+        console.error(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching user data", error);
+    }
+  };
+  const fetchStakeholdersDataByApp = async (applicationId) => {
+    try {
+      const response = await axiosInstanceDirectus.get(
+        `/application_stakeholders?filter[applicationId][_eq]=${applicationId}`
+      );
+      if (response.data && response.data.data) {
+        setStakeHoldersData(response.data.data);
+        return response.data.data;
+      } else {
+        console.error(response.data);
+        setStakeHoldersData([]);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching user data", error);
+      return [];
+    }
+  };
   const fetchSurveyResponseByUserId = async (surveyId, userId) => {
     try {
       setLoading(true);
       const response = await axiosInstanceDirectus.get(`survey_responses?filter[surveyId][_eq]=${surveyId}&filter[userId][_eq]=${userId}`);
       if (response.data?.data?.length > 0) {
-        setSurveyResponseByUserId(response.data.data); // Store the full array
+        setSurveyResponseByUserId(response.data.data);
       } else {
-        console.log("No response yet");
-        setSurveyResponseByUserId([]); // Set an empty array instead of null
+        setSurveyResponseByUserId([]); 
       }
     } catch (error) {
       console.log("Error fetching survey responses:", error);
-      setSurveyResponseByUserId([]); // Ensure it's always an array
+      setSurveyResponseByUserId([]); 
     } finally {
       setLoading(false);
     }
@@ -101,19 +163,18 @@ export const useApiService = () => {
       );
   
       if (response.data?.data?.length > 0) {
-        setSurveyResponseByAppId(response.data.data); // Store the full array
+        setSurveyResponseByAppId(response.data.data); 
       } else {
-        console.log("No response yet");
-        setSurveyResponseByAppId([]); // Set an empty array instead of null
+        setSurveyResponseByAppId([]); 
       }
     } catch (error) {
       console.log("Error fetching survey responses:", error);
-      setSurveyResponseByAppId([]); // Ensure it's always an array
+      setSurveyResponseByAppId([]); 
     } finally {
       setLoading(false);
     }
   };
   
   
-  return { fetchApplications, fetchUserData, fetchApplicationById, fetchSurveyData,fetchSurveyResponseByUserId,fetchSurveyResponseByAppId };
+  return { fetchApplications, fetchUserData,patchUserData, fetchApplicationById, fetchSurveyData,fetchStakeholdersDataByEmail,fetchStakeholdersDataByApp,fetchSurveyResponseByUserId,fetchSurveyResponseByAppId,fetchUserDataByEmail };
 };

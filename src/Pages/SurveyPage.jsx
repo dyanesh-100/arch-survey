@@ -1,72 +1,85 @@
 import React, { useState, useEffect,useRef } from "react";
 import SurveyQuestionsComponent from "../Components/SurveyQuestionsComponent";
 import ApplicationMetaDataComponent from "../Components/ApplicationMetaDataComponent";
-import { useParams } from "react-router-dom";
+import { useParams,useNavigate} from "react-router-dom";
 import TabNavigation from "../Components/TabNavigation";
 import { useGlobalContext } from "../Context/GlobalContext"; 
 import { useApiService } from "../Services/apiService";
 import axiosInstanceDirectus from "../axiosInstanceDirectus";
 import FallbackScreen from "../Components/FallBackScreen";
 import ApplicationResponseComponent from "../Components/ApplicationResponseComponent";
+import SurveyInitializingComponent from "../Components/SurveyInitializingComponent";
+import SurveyFollowUpComponent from "../Components/SurveyFollowUpComponent";
 
 const SurveyPage = () => {
+  const navigate = useNavigate();
   const { applicationUUID } = useParams();
-  const {applicationById,selectedGroupIndex, setSelectedGroupIndex,loading,surveyData,userData,surveyResponseByUserId,surveyResponseByAppId,isSurveySubmitted, setIsSurveySubmitted} = useGlobalContext();
+  const {applicationById,selectedGroupIndex, setSelectedGroupIndex,loading,surveyData,userData,surveyResponseByUserId,surveyResponseByAppId,isSurveySubmitted, setIsSurveySubmitted,setIsFinalResponseSubmitted,isFinalResponseSubmitted} = useGlobalContext();
   const [responses, setResponses] = useState({});
   const surveyRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
-  const {fetchUserData, fetchApplicationById, fetchSurveyData, fetchSurveyResponseByUserId,fetchSurveyResponseByAppId } = useApiService();
-  
+  const [consolidatedResponses, setConsolidatedResponses] = useState([]);
+  const [selectedTab, setSelectedTab] = useState("Stakeholders"); 
+  const {fetchUserData, fetchApplicationById, fetchSurveyData, fetchSurveyResponseByUserId,fetchSurveyResponseByAppId,fetchStakeholdersDataByApp } = useApiService();
+  const surveyId = surveyData?.surveyId || "";
+  const applicationId = applicationById?.applicationId || "";
+  const userId = userData?.id || "";
+  const userName = userData?.email?.split('@')[0] || '';
+  const emailId = userData?.email || "";
+  const role = userData?.email === applicationById?.businessOwner ? 'Business Owner' 
+  : userData?.email === applicationById?.itOwner ? 'IT Owner'
+  : userData?.email === applicationById?.engineeringOwner ? 'Engineering Owner'
+  : 'Unknown Role';  
   useEffect(() => {
+    const initializeData = async () => {
       if (!userData || Object.keys(userData).length === 0) {
-        fetchUserData();
+        await fetchUserData();
       }
-    }, [userData, fetchUserData]);
+      await fetchSurveyData();
+    };
+
+    initializeData();
+  }, []);
   useEffect(() => {
     if (applicationUUID) {
       fetchApplicationById(applicationUUID);
     }
   }, [applicationUUID]);
-
   useEffect(() => {
-    fetchSurveyData();
-  }, []);
-  const applicationId = applicationById?.applicationId || "";
-  const userId = userData?.id || "";
-  const userName = userData?.first_name || "";
-  const role = JSON.stringify(userData?.tags || []);
-  
-  const surveyId = surveyData?.surveyId || "";
-  useEffect(() => {
-    if (surveyId && userId) {
-      fetchSurveyResponseByUserId(surveyId, userId);
-    }
-  }, [surveyId, userId,isSurveySubmitted]);
-
-  useEffect(() => {
-    if (surveyId && applicationId) {
-      fetchSurveyResponseByAppId(surveyId, applicationId);
-    }
-  }, [surveyId, applicationId,isSurveySubmitted]);
-
-  
-  useEffect(() => {
-    if (Array.isArray(surveyResponseByAppId)) {
-      const userResponse = surveyResponseByAppId.find(
-        (response) => response.userId === userData.id
-      );
-      if (userResponse && userResponse.response) {
-        const preFilledResponses = {};
-        userResponse.response.forEach(({ fieldName, response, group }) => {
-          if (!preFilledResponses[group]) {
-            preFilledResponses[group] = {}; 
-          }
-          preFilledResponses[group][fieldName] = response;
-        });
-        setResponses(preFilledResponses);
+    const fetchResponses = async () => {
+      if (surveyId && userId) {
+        await fetchSurveyResponseByUserId(surveyId, userId);
       }
-    }
-  }, [surveyResponseByAppId, userData.id]);
+      if (surveyId && applicationId) {
+        await fetchSurveyResponseByAppId(surveyId, applicationId);
+      }
+      if (applicationId) {
+        await fetchStakeholdersDataByApp(applicationId);
+      }
+    };
+    fetchResponses();
+  }, [surveyId, userId, applicationId, applicationUUID]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (Array.isArray(surveyResponseByAppId)) {
+        const userResponse = surveyResponseByAppId.find(
+          (response) => response.userId === userData.id
+        );
+        if (userResponse && userResponse.response) {
+          const preFilledResponses = {};
+          userResponse.response.forEach(({ fieldName, response, group }) => {
+            if (!preFilledResponses[group]) {
+              preFilledResponses[group] = {}; 
+            }
+            preFilledResponses[group][fieldName] = response;
+          });
+          setResponses(preFilledResponses);
+        }
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [surveyResponseByAppId, applicationUUID]);
   
   useEffect(() => {
     if (applicationById) {
@@ -79,25 +92,22 @@ const SurveyPage = () => {
           "business_unit": prev.General?.["q-2003"] ?? applicationById.businessUnit,
           "business_owner": prev.General?.["q-2004"] ?? applicationById.businessOwner,
           "it_owner": prev.General?.["q-2005"] ?? applicationById.itOwner,
+          "engineering_owner": prev.General?.["q-2006"] ?? applicationById.engineeringOwner,
         },
       }));
     }
   }, [applicationById]);  
   
-  const handleResponseChange = (group, fieldName, value) => {
-    if (fieldName === "q-2001") return; 
-  
-    setResponses((prev) => ({
-      ...prev,
-      [group]: {
-        ...(prev[group] || {}),
-        [fieldName]: value, 
-      },
-    }));
-  
-    
-  };
-  
+const handleResponseChange = (group, fieldName, value) => {
+  if (fieldName === "q-2001") return;  
+  setResponses((prev) => ({
+    ...prev,
+    [group]: {
+      ...(prev[group] || {}),
+      [fieldName]: value, 
+    },
+  }));
+};
   // const validateResponses = () => {
   //   if (!surveyData || !surveyData.question_groups) return false;
   
@@ -110,10 +120,7 @@ const SurveyPage = () => {
   //   }
   //   return true;
   // };
-  const checkDuplicateResponse = (userId, appId) => {
-    return surveyResponseByUserId?.some(response => response.userId === userId && response.appId === appId);
-  };
-  
+  const responseId = surveyResponseByUserId?.[0]?.responseId;
   const handleSubmitSurvey = async () => {
     const allResponses = {
       General: {
@@ -122,10 +129,12 @@ const SurveyPage = () => {
         "q-2003": responses.General?.["q-2003"] || applicationById?.applicationDepartment,
         "q-2004": responses.General?.["q-2004"] || applicationById?.businessOwner,
         "q-2005": responses.General?.["q-2005"] || applicationById?.itOwner,
+        "q-2006": responses.General?.["q-2006"] || applicationById?.engineeringOwner,
         ...responses.General,
       },
       ...responses,
     };
+
 
     // if (!validateResponses()) {
     //   alert("Please answer all questions before submitting.");
@@ -138,24 +147,24 @@ const SurveyPage = () => {
         group, 
       }))
     );
-    try {
-      if (checkDuplicateResponse(userData.id, applicationId)) {
-        alert("You have already submitted this survey.");
-        return;
-      }      
-      if (surveyResponseByAppId && surveyResponseByAppId.responseId != null && surveyResponseByAppId.userId === userData.userId) {
-        await axiosInstanceDirectus.patch(`/survey_responses/${surveyResponseByAppId.responseId}`, {
+    try {  
+      if (surveyResponseByAppId?.length > 0 && surveyResponseByUserId[0]?.responseId && surveyResponseByUserId[0].userId === userData.id) {
+        await axiosInstanceDirectus.patch(`/survey_responses/${responseId}`, {
           response: formattedResponses,
         });
       } 
-      else {
-              
+      else if (surveyResponseByUserId?.some(response => response.userId === userData.id && response.appId === applicationId)) {
+        alert("You have already submitted this survey.");
+        return;
+      }  
+      else {     
         await axiosInstanceDirectus.post("/survey_responses", {
           appId :applicationId,
           responseId: crypto.randomUUID(),
           userId,
-          userName, 
-          role,
+          userName,
+          role, 
+          emailId,
           surveyId, 
           response: formattedResponses 
         });
@@ -165,35 +174,88 @@ const SurveyPage = () => {
       businessOwner: responses.General?.business_owner || applicationById?.businessOwner,
       businessUnit: responses.General?.business_unit || applicationById?.businessUnit,
       itOwner: responses.General?.it_owner || applicationById?.itOwner,
+      engineeringOwner: responses.General?.engineering_owner || applicationById?.engineeringOwner
     });
       
       setIsSurveySubmitted(true);
       setIsEditing(false)
     } catch (error) {
-      alert("Something went wrong. Please try again.");
+      alert(error);
     }
   };  
+  
+  const handleAdminSubmit = async () => {
+    try {
+      let action;
+      const adminResponseId = surveyResponseByAppId.find(item => item.role === "Admin")?.responseId;
+      if (surveyResponseByAppId?.length > 0 && userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" &&
+        (isFinalResponseSubmitted || adminResponseId !== undefined)) {
+        await axiosInstanceDirectus.patch(`/survey_responses/${adminResponseId}`, {
+          response: consolidatedResponses,
+          userId,
+          userName,
+          role: "Admin", 
+          emailId
+        });
+        action = "updated";
+      } else {
+        await axiosInstanceDirectus.post("/survey_responses", {
+          appId: applicationId,
+          responseId: crypto.randomUUID(),
+          userId,
+          userName,
+          role: "Admin",
+          emailId,
+          surveyId,
+          response: consolidatedResponses
+        });
+        action = "submitted";
+        setIsFinalResponseSubmitted(true); 
+      }
+      alert(`Consolidated responses ${action} successfully!`);
+    } catch (error) {
+      alert("Error submitting consolidated responses");
+      console.error(error);
+    }
+  };
+  if (loading) {
+    return <div className="text-center text-gray-500 p-4">Loading survey...</div>;
+  }
   const handleGroupChange = (index) => {
     setSelectedGroupIndex(index);
     setTimeout(() => {
       surveyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 1);
   };
-  if (loading) {
-    return <div className="text-center text-gray-500 p-4">Loading survey...</div>;
-  }
-  const groupNames = surveyData ? surveyData.question_groups.map((group) => group.groupName) : [];
-  const selectedGroup = surveyData ? surveyData.question_groups[selectedGroupIndex] : null;
-  const groups = surveyData ? surveyData.question_groups : [];
-  const isFirstGroup = selectedGroupIndex === 0;
-  const isLastGroup = selectedGroupIndex === groups.length - 1;
   
+  const getFilteredGroups = (groups, role) => {
+    switch (role) {
+      case 'Business Owner':
+        return groups.filter(group => 
+          ['Business', 'Risk', 'General', 'Cost','Technical'].includes(group.groupName))
+      case 'IT Owner':
+        return groups.filter(group => 
+          ['Business', 'Risk', 'General', 'Cost','Technical'].includes(group.groupName))
+      case 'Engineering Owner':
+        return groups.filter(group => 
+          ['Business', 'Risk', 'General', 'Cost','Technical'].includes(group.groupName))
+      default:
+        return [];
+    }
+  };
+  
+  const groups = surveyData ? surveyData.question_groups.map((group) => group.groups) : [];
+  const filteredGroups = getFilteredGroups(groups, role);
+  const filteredGroupNames = filteredGroups.map(group => group.groupName);
+  const selectedGroup = filteredGroups[selectedGroupIndex] || null;
+  const isFirstGroup = selectedGroupIndex === 0;
+  const isLastGroup = selectedGroupIndex === filteredGroups.length - 1;
 
   const userResponse = surveyResponseByAppId?.find(
     (response) => response.userId === userData.id
   );
   
-  if (userResponse && !isEditing) {
+  if (userResponse && !isEditing && userData.role != "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f") {
     return (
       <FallbackScreen
         message="You have successfully submitted your survey!"
@@ -205,36 +267,62 @@ const SurveyPage = () => {
       />
     );
   }
-  
   return (
     <div className="h-screen bg-gray-100 p-6 overflow-auto">
       <button
-        className="mb-4 flex items-center text-blue-600 hover:text-blue-800"
-        onClick={() => (window.location.href = "/landingpage")}
+        className="mb-4 flex items-center text-blue-600 hover:text-blue-800 cursor-pointer"
+        onClick={() => {
+            // window.location.href = "/landingpage"; 
+            navigate('/landingpage')
+        }}
       >
-        <span className="mr-2">⬅</span> Back to Search
-      </button>
+      <span className="mr-2">⬅</span> Back to Search
+    </button>
       {applicationById && (
         <>
           <ApplicationMetaDataComponent application={applicationById} />
+          <TabNavigation
+            ref={surveyRef}
+            groups={userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" 
+              ? ["Stakeholders","Survey Follow-up", "Survey Response"] 
+              : filteredGroupNames}
+            selectedGroup={userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" 
+              ? selectedTab 
+              : selectedGroup?.groupName}
+            onSelectGroup={(group) => {
+              if (userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f") {
+                setSelectedTab(group);
+              } else {
+                setSelectedGroupIndex(filteredGroups.findIndex(g => g.groupName === group));
+              }
+            }}
+          />
           {userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" ? (
-            <ApplicationResponseComponent 
-              surveyResponseByAppId = {surveyResponseByAppId}
-              surveyData={surveyData}
-            />
+            <>
+              {selectedTab === "Stakeholders" && (
+                <SurveyInitializingComponent
+                  applicationById={applicationById}
+                />
+              )}
+              {selectedTab === "Survey Follow-up"  && (
+                <SurveyFollowUpComponent
+                  surveyResponseByAppId={surveyResponseByAppId}
+                  applicationById={applicationById}
+                />
+              )}
+              {selectedTab === "Survey Response" && (
+                <ApplicationResponseComponent 
+                  surveyResponseByAppId={surveyResponseByAppId}
+                  surveyData={surveyData}
+                  onConsolidatedResponsesChange={setConsolidatedResponses}
+                  handleSubmit={handleAdminSubmit}
+                />
+              )}
+            </>
           ) : (
             <>
-              <TabNavigation
-                ref={surveyRef}
-                groups={groupNames}
-                selectedGroup={selectedGroup?.groupName}
-                onSelectGroup={(group) =>
-                  setSelectedGroupIndex(groupNames.indexOf(group))
-                }
-              />
               {selectedGroup && (
                 <SurveyQuestionsComponent
-                  ref={surveyRef}
                   group={selectedGroup.groupName}
                   questions={selectedGroup.questions}
                   responses={responses}
@@ -245,12 +333,12 @@ const SurveyPage = () => {
               <div className="mt-6 flex justify-between">
                 <button
                   className={`p-3 rounded ${
-                    isFirstGroup
-                      ? "bg-gray-300 cursor-not-allowed"
-                      : "bg-blue-500 text-white"
+                      isFirstGroup
+                          ? "bg-gray-300 cursor-not-allowed"
+                          : "bg-blue-500 text-white"
                   }`}
                   onClick={() =>
-                    handleGroupChange(Math.max(selectedGroupIndex - 1, 0))
+                      handleGroupChange(Math.max(selectedGroupIndex - 1, 0))
                   }
                   disabled={isFirstGroup}
                 >
@@ -258,17 +346,17 @@ const SurveyPage = () => {
                 </button>
                 {isLastGroup ? (
                   <button
-                    className="bg-green-500 text-white p-3 rounded"
-                    onClick={handleSubmitSurvey}
+                      className="bg-green-500 text-white p-3 rounded"
+                      onClick={handleSubmitSurvey}
                   >
-                    {userResponse ? "Update Survey" : "Submit Survey"}
+                      {userResponse ? "Update Survey" : "Submit Survey"}
                   </button>
-                ) : (
+                  ) : (
                   <button
-                    className="bg-blue-500 text-white p-3 rounded"
-                    onClick={() => handleGroupChange(selectedGroupIndex + 1)}
+                      className="bg-blue-500 text-white p-3 rounded"
+                      onClick={() => handleGroupChange(selectedGroupIndex + 1)}
                   >
-                    Next
+                      Next
                   </button>
                 )}
               </div>
@@ -277,6 +365,6 @@ const SurveyPage = () => {
         </>
       )}
     </div>
-  );  
+  );
 };
 export default SurveyPage;

@@ -15,8 +15,11 @@
     "axios": "^1.7.9",
     "framer-motion": "^12.6.2",
     "lucide-react": "^0.475.0",
+    "luxon": "^3.6.1",
+    "papaparse": "^5.5.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-feather": "^2.0.10",
     "react-router-dom": "^7.1.5",
     "tailwindcss": "^4.0.6"
   },

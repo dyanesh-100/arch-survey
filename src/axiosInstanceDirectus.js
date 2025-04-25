@@ -2,8 +2,32 @@ import axios from 'axios';
 
 const axiosInstanceDirectus = axios.create({
     baseURL: 'http://localhost:8055/items',
-    withCredentials: true, // Ensures cookies are sent with requests
+    withCredentials: true, 
 });
+axiosInstanceDirectus.interceptors.response.use(
+    response => response,
+    error => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("next_refresh_time");
+        if (window.refreshTimer) {
+            clearTimeout(window.refreshTimer);
+            window.refreshTimer = null;
+        }
+        localStorage.removeItem("isAuthenticated");
+        window.location.href = "/"; 
+      }
+      if (error.response?.status === 403) {
+        localStorage.removeItem("next_refresh_time");
+        if (window.refreshTimer) {
+            clearTimeout(window.refreshTimer);
+            window.refreshTimer = null;
+        }
+        localStorage.removeItem("isAuthenticated");
+        window.location.href = '/';
+      }
+      return Promise.reject(error);
+    }
+  );
 
-// No need for request interceptor to attach tokens
+
 export default axiosInstanceDirectus;
