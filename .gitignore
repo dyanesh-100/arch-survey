@@ -14,7 +14,7 @@ dist-ssr
 
 # Editor directories and files
 /dd.txt
-/rough.txt
+/rough.jsx
 .vscode/*
 !.vscode/extensions.json
 .idea

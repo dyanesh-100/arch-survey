@@ -6,6 +6,7 @@ import SurveyPage from './Pages/SurveyPage';
 import SurveyResponsePage from './Pages/SurveyResponsePage';
 import ApplicationSearchPage from './Pages/ApplicationSearchPage';
 import LoginPage from './Pages/LoginPage';
+import InviteHandler from './Pages/InviteHandler';
 import UserLandingPage from './Pages/UserLandingPage';
 import DataUploadPage from './Pages/DataUploadPage';
 
@@ -26,6 +27,7 @@ const App = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/invitehandler" element={<InviteHandler/>} />
         <Route path="/landingpage" element={
                     isAuthenticated ? (
                         role === ADMIN_UUID ? <ApplicationSearchPage /> : <UserLandingPage />

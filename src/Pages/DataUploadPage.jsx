@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "react-feather";
 import UploadCSV from "../Components/UploadCSV";
+import UploadSummary from "../Components/UploadSummary"
 import FieldMappingConfigurationContainer from '../Components/FieldMappingConfigurationContainer';
 import questions from "../assets/Images/questions-sample.jpg";
 import applications from "../assets/Images/applications-sample.jpg";
@@ -12,7 +13,9 @@ const DataUploadPage = () => {
   const navigate = useNavigate();
   const [mappedData, setMappedData] = useState(null);
   const [file, setFile] = useState(null);
-
+  const [isUploaded, setIsUploaded] = useState(false);
+  const [createdCount, setCreatedCount] = useState(0);
+  const [updatedCount, setUpdatedCount] = useState(0);
   const apiEndpoints = {
     applications: "/applications",
     questions: "/questions",
@@ -49,49 +52,13 @@ const DataUploadPage = () => {
     ? `${directusUrl}/assets/${sampleFormat[uploadType].fileId}?download`
     : "#"; 
   const imageDetails = sampleFormat[uploadType] || { format: "", image: "" };
-  const validateEmails = (data) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalidEntries = [];
-    data.forEach(app => {
-      const invalidFields = [];
-      if (app.businessOwner && !emailRegex.test(app.businessOwner)) {
-        invalidFields.push('businessOwner');
-      }
-      if (app.itOwner && !emailRegex.test(app.itOwner)) {
-        invalidFields.push('itOwner');
-      }
-      if (app.engineeringOwner && !emailRegex.test(app.engineeringOwner)) {
-        invalidFields.push('engineeringOwner');
-      }
-      if (invalidFields.length > 0) {
-        invalidEntries.push({
-          applicationId: app.applicationId,
-          applicationName: app.applicationName,
-          invalidFields
-        });
-      }
-    });
-  
-    return invalidEntries;
-  };
-  
+
   const handleUpload = async () => {
     if (!mappedData) {
       alert("Please complete the configuration first");
       return;
     }
-    if (uploadType === 'applications') {
-      const invalidEntries = validateEmails(mappedData);
-      if (invalidEntries.length > 0) {
-        const errorMessage = invalidEntries.map(entry => 
-          `Application ${entry.applicationId} (${entry.applicationName}) has invalid emails in: ${entry.invalidFields.join(', ')}`
-        ).join('\n\n');
-        
-        alert(`Invalid email formats found:\n\n${errorMessage}`);
-        return;
-      }
-    }
-  
+
     try {
       const existingItemsResponse = await axiosInstanceDirectus.get(`/${uploadType}`, {
         params: {
@@ -105,11 +72,11 @@ const DataUploadPage = () => {
           }
         }
       });
-  
+
       const existingItemIds = existingItemsResponse.data.data?.map(item => 
         uploadType === 'applications' ? item.applicationId : item.questionId
       ) || [];
-  
+
       const results = await Promise.all(
         mappedData.map(async (item) => {
           const itemId = uploadType === 'applications' ? item.applicationId : item.questionId;
@@ -152,25 +119,76 @@ const DataUploadPage = () => {
           }
         })
       );
-  
       if (uploadType === 'applications') {
         await handleApplicationStakeholders(results);
+        // await handleDefaultAppQuestions();
       }
       const createdCount = results.filter(r => r.action === 'created').length;
       const updatedCount = results.filter(r => r.action === 'updated').length;
-      
-      alert(`
-        Upload completed successfully!
-        ${createdCount} new ${uploadType} ${createdCount === 1 ? '' : 's'} created
-        ${updatedCount} existing ${uploadType} ${updatedCount === 1 ? '' : 's'} updated
-      `);
-  
+      setCreatedCount(createdCount);
+      setUpdatedCount(updatedCount);
+      setIsUploaded(true);
+
     } catch (error) {
       console.error('Upload error:', error);
       alert(`Error processing ${uploadType}: ${error.response?.data?.errors?.[0]?.message || error.message}`);
     }
   };
+  const handleDefaultAppQuestions = async () => {
+    const defaultQuestions = [
+      {
+        question_id: "q-2001",
+        question: "What is the application name?",
+        response_type: "text",
+        evaluation_parameter: "app_name",
+        options: [],
+        question_group: "grp-100",
+      },
+      {
+        question_id: "q-2002",
+        question: "Provide a description of the application.",
+        response_type: "text",
+        evaluation_parameter: "app_description",
+        options: [],
+        question_group: "grp-100",
+      },
+      {
+        question_id: "q-2003",
+        question: "Which business unit does this application belong to?",
+        response_type: "text",
+        evaluation_parameter: "business_unit",
+        options: [],
+        question_group: "grp-100",
+      },
+      {
+        question_id: "q-2004",
+        question: "Who is the business owner of the application?",
+        response_type: "text",
+        evaluation_parameter: "business_owner",
+        options: [],
+        question_group: "grp-100",
+      },
+      {
+        question_id: "q-2005",
+        question: "Who is the IT owner of the application?",
+        response_type: "text",
+        evaluation_parameter: "it_owner",
+        options: [],
+        question_group: "grp-100",
+      }
+    ];
   
+    try {
+      const responses = await Promise.all(
+        defaultQuestions.map((question) =>
+          axiosInstanceDirectus.post('/questions', question)
+        )
+      );
+      console.log("All questions submitted successfully", responses);
+    } catch (error) {
+      console.error("Error submitting questions", error);
+    }
+  };  
   const handleApplicationStakeholders = async (applicationResults) => {
     try {
       const existingStakeholdersResponse = await axiosInstanceDirectus.get('/application_stakeholders', {
@@ -227,6 +245,7 @@ const DataUploadPage = () => {
       alert('Warning: Application data was saved but there was an issue updating stakeholders');
     }
   };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -269,17 +288,28 @@ const DataUploadPage = () => {
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-sm">
-            <FieldMappingConfigurationContainer 
+          {isUploaded ? (
+            <UploadSummary
+              createdCount={createdCount}
+              updatedCount={updatedCount}
               uploadType={uploadType}
-              onMappingComplete={setMappedData}
-              onFileSelect={setFile}
             />
-            <UploadCSV 
+            ) : (
+              <>
+              <FieldMappingConfigurationContainer 
+                uploadType={uploadType}
+                onMappingComplete={setMappedData}
+                onFileSelect={setFile}
+              />
+              <UploadCSV 
                 apiUrl={apiEndpoints[uploadType]} 
                 file={file} 
                 mappedData={mappedData}
                 onUpload={handleUpload}
               />
+              </>
+            )}
+            
           </div>
         </div>
       </div>

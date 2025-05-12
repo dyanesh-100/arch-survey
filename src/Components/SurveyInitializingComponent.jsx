@@ -8,12 +8,13 @@ const SurveyInitializingComponent = ({ applicationById }) => {
   const [error, setError] = useState(null);
   const {surveyStarted, setSurveyStarted} = useGlobalContext();
   const INVITE_ROLE_ID = '2f0727be-af3d-46f3-b576-0077ef74770b';
+  const INVITE_URL = "http://localhost:5173/invitehandler"  
   useEffect(() => {
-      if(applicationById.surveyStatus === 'Survey started')
+      if(applicationById.surveyStatus === 'Survey started'|| applicationById.surveyStatus === 'Survey completed')
         setSurveyStarted(true);
   }, [applicationById.surveyStatus]);
   useEffect(() => {
-      if(applicationById.surveyStatus !== 'Survey started')
+      if(applicationById.surveyStatus === 'Survey not yet started')
         setSurveyStarted(false);
   }, [applicationById.surveyStatus]);
   const stakeholders = [
@@ -50,7 +51,8 @@ const SurveyInitializingComponent = ({ applicationById }) => {
           'http://localhost:8055/users/invite',
           {
             email: stakeholder.email,
-            role: INVITE_ROLE_ID
+            role: INVITE_ROLE_ID,
+            invite_url: INVITE_URL
           }
         );
       }

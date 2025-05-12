@@ -66,18 +66,6 @@ export const useApiService = () => {
       return [];
     }
   };
-  const patchUserData = async (role) => {
-    try {
-      const response = await axios.patch("http://localhost:8055/users/me",{ stakeholder: role }, { withCredentials: true });
-      if (error.response?.status === 200) {
-        return
-      } else {
-        console.error("something went wrong:", response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching user data", error);
-    }
-  };
   const fetchApplicationById = async (applicationUUID) => {
     try {
       setLoading(true);
@@ -96,7 +84,7 @@ export const useApiService = () => {
   const fetchSurveyData = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstanceDirectus.get("/surveys?fields=surveyId,surveyTitle,question_groups.groups.groupId,question_groups.groups.groupName,question_groups.groups.questions.questions.*");
+      const response = await axiosInstanceDirectus.get("/surveys?fields=surveyId,surveyTitle,question_groups.groupId,question_groups.groupName,question_groups.questions.question_id,question_groups.questions.question,question_groups.questions.response_type,question_groups.questions.options,question_groups.questions.evaluation_parameter");
       if (response.data && response.data.data.length > 0) {
         setSurveyData(response.data.data[0]);
         setSelectedGroupIndex(0);
@@ -176,5 +164,5 @@ export const useApiService = () => {
   };
   
   
-  return { fetchApplications, fetchUserData,patchUserData, fetchApplicationById, fetchSurveyData,fetchStakeholdersDataByEmail,fetchStakeholdersDataByApp,fetchSurveyResponseByUserId,fetchSurveyResponseByAppId,fetchUserDataByEmail };
+  return { fetchApplications, fetchUserData, fetchApplicationById, fetchSurveyData,fetchStakeholdersDataByEmail,fetchStakeholdersDataByApp,fetchSurveyResponseByUserId,fetchSurveyResponseByAppId,fetchUserDataByEmail };
 };

@@ -9,22 +9,22 @@ const SurveyQuestionsComponent = ({ group, questions, responses, onResponseChang
       "q-2005": applicationById?.itOwner,
       "q-2006": applicationById?.engineeringOwner
     };
-
-    const handleChange = (fieldName, value, isCheckbox) => {
-      if (fieldName === "q-2001") return; 
+    
+    const handleChange = (evaluation_parameter, value, isCheckbox) => {
+      if (evaluation_parameter === "app_name") return; 
 
       if (isCheckbox) {
-        const existingValues = Array.isArray(responses[group]?.[fieldName]) 
-          ? responses[group][fieldName] 
+        const existingValues = Array.isArray(responses[group]?.[evaluation_parameter]) 
+          ? responses[group][evaluation_parameter] 
           : [];
         
         const updatedValues = existingValues.includes(value)
           ? existingValues.filter((item) => item !== value)
           : [...existingValues, value];
 
-        onResponseChange(group, fieldName, updatedValues);
+        onResponseChange(group, evaluation_parameter, updatedValues);
       } else {
-        onResponseChange(group, fieldName, value);
+        onResponseChange(group, evaluation_parameter, value);
       }
     };
 
@@ -34,60 +34,61 @@ const SurveyQuestionsComponent = ({ group, questions, responses, onResponseChang
         <div className="space-y-4">
           {questions && Array.isArray(questions) && questions.length > 0 ? (
             questions.map((item, index) => {
-              const question = item.questions; 
-              const isPrepopulated = Object.keys(prepopulatedFields).includes(question.questionId);
-              const prefilledValue = isPrepopulated && responses[group]?.[question.fieldName] === undefined
-                ? prepopulatedFields[question.questionId]
-                : (question.responseType === "checkbox" || question.responseType === "multiple-choice")
-                  ? Array.isArray(responses[group]?.[question.fieldName]) 
-                    ? responses[group][question.fieldName] 
+              const question = item.questions || item; // Handle both formats
+              const questionId = question?.question_id; // Safe access
+              const hasQuestionId = questionId !== undefined && questionId !== null;
+              if (hasQuestionId && questionId === "q-2001") {
+                return null;
+              }
+              const isPrepopulated = hasQuestionId && Object.keys(prepopulatedFields).includes(questionId);
+              const prefilledValue = isPrepopulated && responses[group]?.[question.evaluation_parameter] === undefined
+                ? prepopulatedFields[questionId]
+                : (question.response_type === "checkbox" || question.response_type === "multiple-choice")
+                  ? Array.isArray(responses[group]?.[question.evaluation_parameter]) 
+                    ? responses[group][question.evaluation_parameter] 
                     : []
-                  : responses[group]?.[question.fieldName] ?? "";
+                  : responses[group]?.[question.evaluation_parameter] ?? "";
 
               return (
                 <div key={index} className="bg-white p-4 rounded shadow">
                   <p className="font-medium">{question.question}</p>
                   <div className="mt-2 space-y-2">
-                  {question.responseType === "text" && (
+                  {question.response_type === "text" && (
                     <div className="relative">
                         <input
                           type="text"
                           className={`p-2 border rounded w-full ${
-                            question.questionId === "q-2001"
+                            hasQuestionId && questionId === "q-2001"
                               ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                              : ["q-2002", "q-2003", "q-2004", "q-2005", "q-2006"].includes(question.questionId)
+                              : hasQuestionId && ["q-2002", "q-2003", "q-2004", "q-2005", "q-2006"].includes(questionId)
                                 ? "bg-gray-50 text-gray-600"
                                 : ""
                           }`}
                           value={prefilledValue}
-                          onChange={(e) => handleChange(question.fieldName, e.target.value)}
-                          disabled={question.questionId === "q-2001"}
+                          onChange={(e) => handleChange(question.evaluation_parameter, e.target.value)}
+                          disabled={hasQuestionId && questionId === "q-2001"}
                         />
-                        {question.questionId === "q-2001" && (
-                          <span className="absolute right-2 top-2 text-xs text-gray-500">
-                            (Application name cannot be edited)
-                          </span>
-                        )}
-                        {["q-2002", "q-2003", "q-2004", "q-2005", "q-2006"].includes(question.questionId) && (
+                
+                        {hasQuestionId && ["q-2002", "q-2003", "q-2004", "q-2005", "q-2006"].includes(questionId) && (
                           <span className="absolute right-2 top-2 text-xs text-blue-500 italic">
                             (Edit it if the values are outdated)
                           </span>
                         )}
                       </div>
                     )}
-                    {question.responseType === "number" && (
+                    {question.response_type === "number" && (
                       <input
                         type="number"
                         className="p-2 border rounded w-full"
                         value={prefilledValue}
-                        onChange={(e) => handleChange(question.fieldName, e.target.value)}
+                        onChange={(e) => handleChange(question.evaluation_parameter, e.target.value)}
                       />
                     )}
-                    {question.responseType === "dropdown" && (
+                    {question.response_type === "dropdown" && (
                       <select
                         className="border p-2 rounded w-full"
                         value={prefilledValue}
-                        onChange={(e) => handleChange(question.fieldName, e.target.value)}
+                        onChange={(e) => handleChange(question.evaluation_parameter, e.target.value)}
                       >
                         <option value="" disabled>
                           Select an option
@@ -99,23 +100,23 @@ const SurveyQuestionsComponent = ({ group, questions, responses, onResponseChang
                         ))}
                       </select>
                     )}
-                    {question.responseType === "radio" && (
+                    {question.response_type === "radio" && (
                       <div className="space-y-2">
                         {question.options.map((option, i) => (
                           <label key={i} className="flex items-center">
                             <input
                               className="mr-2"
                               type="radio"
-                              name={`${group}-${question.fieldName}`}
+                              name={`${group}-${question.evaluation_parameter}`}
                               checked={prefilledValue === option}
-                              onChange={() => handleChange(question.fieldName, option)}
+                              onChange={() => handleChange(question.evaluation_parameter, option)}
                             />
                             {option}
                           </label>
                         ))}
                       </div>
                     )}
-                    {(question.responseType === "checkbox" || question.responseType === "multiple-choice") && (
+                    {(question.response_type === "checkbox" || question.response_type === "multiple-choice") && (
                       <div className="space-y-2">
                         {question.options.map((option, i) => (
                           <label key={i} className="flex items-center">
@@ -123,7 +124,7 @@ const SurveyQuestionsComponent = ({ group, questions, responses, onResponseChang
                               className="mr-2 rounded"
                               type="checkbox"
                               checked={prefilledValue.includes(option)}
-                              onChange={() => handleChange(question.fieldName, option, true)}
+                              onChange={() => handleChange(question.evaluation_parameter, option, true)}
                             />
                             {option}
                           </label>

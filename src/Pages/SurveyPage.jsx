@@ -14,7 +14,7 @@ import SurveyFollowUpComponent from "../Components/SurveyFollowUpComponent";
 const SurveyPage = () => {
   const navigate = useNavigate();
   const { applicationUUID } = useParams();
-  const {applicationById,selectedGroupIndex, setSelectedGroupIndex,loading,surveyData,userData,surveyResponseByUserId,surveyResponseByAppId,isSurveySubmitted, setIsSurveySubmitted,setIsFinalResponseSubmitted,isFinalResponseSubmitted} = useGlobalContext();
+  const {surveyStarted,applicationById,selectedGroupIndex, setSelectedGroupIndex,loading,surveyData,userData,surveyResponseByUserId,surveyResponseByAppId,isSurveySubmitted, setIsSurveySubmitted,setIsFinalResponseSubmitted,isFinalResponseSubmitted} = useGlobalContext();
   const [responses, setResponses] = useState({});
   const surveyRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -29,55 +29,70 @@ const SurveyPage = () => {
   const role = userData?.email === applicationById?.businessOwner ? 'Business Owner' 
   : userData?.email === applicationById?.itOwner ? 'IT Owner'
   : userData?.email === applicationById?.engineeringOwner ? 'Engineering Owner'
-  : 'Unknown Role';  
+  : 'Unknown Role'; 
+  
   useEffect(() => {
     const initializeData = async () => {
+      const promises = [];
+
       if (!userData || Object.keys(userData).length === 0) {
-        await fetchUserData();
+        promises.push(fetchUserData());
       }
-      await fetchSurveyData();
+
+      promises.push(fetchSurveyData());
+
+      try {
+        await Promise.all(promises);
+      } catch (error) {
+        console.error("Initialization failed:", error);
+      }
     };
 
     initializeData();
   }, []);
+
   useEffect(() => {
     if (applicationUUID) {
       fetchApplicationById(applicationUUID);
     }
-  }, [applicationUUID]);
-  useEffect(() => {
-    const fetchResponses = async () => {
-      if (surveyId && userId) {
-        await fetchSurveyResponseByUserId(surveyId, userId);
-      }
-      if (surveyId && applicationId) {
-        await fetchSurveyResponseByAppId(surveyId, applicationId);
-      }
-      if (applicationId) {
-        await fetchStakeholdersDataByApp(applicationId);
-      }
-    };
-    fetchResponses();
-  }, [surveyId, userId, applicationId, applicationUUID]);
+  }, [applicationUUID,isSurveySubmitted,surveyStarted]);
 
+  useEffect(() => {
+    if (surveyId && userId) {
+      fetchSurveyResponseByUserId(surveyId, userId);
+    }
+  }, [isSurveySubmitted, surveyId, userId,applicationUUID]);
+
+  useEffect(() => {
+    if (surveyId && applicationId ) {
+      fetchSurveyResponseByAppId(surveyId, applicationId);
+    }
+  }, [isSurveySubmitted, surveyId, applicationId,applicationUUID]);
+
+  useEffect(() => {
+    if (applicationId) {
+      fetchStakeholdersDataByApp(applicationId);
+    }
+  }, [applicationId]);
+        
   useEffect(() => {
     const timer = setTimeout(() => {
       if (Array.isArray(surveyResponseByAppId)) {
         const userResponse = surveyResponseByAppId.find(
           (response) => response.userId === userData.id
-        );
+        ); 
         if (userResponse && userResponse.response) {
           const preFilledResponses = {};
-          userResponse.response.forEach(({ fieldName, response, group }) => {
+          userResponse.response.forEach(({ evaluation_parameter, response, group }) => {
             if (!preFilledResponses[group]) {
               preFilledResponses[group] = {}; 
             }
-            preFilledResponses[group][fieldName] = response;
+            preFilledResponses[group][evaluation_parameter] = response;
           });
           setResponses(preFilledResponses);
         }
       }
-    }, 500);
+    }, 300);
     return () => clearTimeout(timer);
   }, [surveyResponseByAppId, applicationUUID]);
   
@@ -98,13 +113,13 @@ const SurveyPage = () => {
     }
   }, [applicationById]);  
   
-const handleResponseChange = (group, fieldName, value) => {
-  if (fieldName === "q-2001") return;  
+const handleResponseChange = (group, evaluation_parameter, value) => {
+  if (evaluation_parameter === "q-2001") return;  
   setResponses((prev) => ({
     ...prev,
     [group]: {
       ...(prev[group] || {}),
-      [fieldName]: value, 
+      [evaluation_parameter]: value, 
     },
   }));
 };
@@ -115,12 +130,16 @@ const handleResponseChange = (group, fieldName, value) => {
   //     if (!responses[group.groupName]) return false;
   
   //     for (const question of group.questions) {
-  //       if (!responses[group.groupName][question.fieldName]?.trim()) return false; 
+  //       if (!responses[group.groupName][question.evaluation_parameter]?.trim()) return false; 
   //     }
   //   }
   //   return true;
   // };
-  const responseId = surveyResponseByUserId?.[0]?.responseId;
+
+  const userResponseOfspecificApp = surveyResponseByAppId.find(
+    (response) => response.userId === userData.id
+  ); 
+  const responseId = userResponseOfspecificApp?.responseId;
   const handleSubmitSurvey = async () => {
     const allResponses = {
       General: {
@@ -134,21 +153,19 @@ const handleResponseChange = (group, fieldName, value) => {
       },
       ...responses,
     };
-
-
     // if (!validateResponses()) {
     //   alert("Please answer all questions before submitting.");
     //   return;
     // }
     const formattedResponses = Object.entries(responses).flatMap(([group, fields]) =>
-      Object.entries(fields).map(([fieldName, response]) => ({
-        fieldName,
+      Object.entries(fields).map(([evaluation_parameter, response]) => ({
+        evaluation_parameter,
         response,
         group, 
       }))
     );
     try {  
-      if (surveyResponseByAppId?.length > 0 && surveyResponseByUserId[0]?.responseId && surveyResponseByUserId[0].userId === userData.id) {
+      if (surveyResponseByAppId?.length > 0 && surveyResponseByUserId[0]?.responseId && userResponseOfspecificApp !== undefined) {
         await axiosInstanceDirectus.patch(`/survey_responses/${responseId}`, {
           response: formattedResponses,
         });
@@ -183,7 +200,6 @@ const handleResponseChange = (group, fieldName, value) => {
       alert(error);
     }
   };  
-  
   const handleAdminSubmit = async () => {
     try {
       let action;
@@ -209,6 +225,10 @@ const handleResponseChange = (group, fieldName, value) => {
           surveyId,
           response: consolidatedResponses
         });
+        await axiosInstanceDirectus.patch(
+          `/applications/${applicationById.applicationId}`,
+          { surveyStatus: "Survey completed" }
+        );
         action = "submitted";
         setIsFinalResponseSubmitted(true); 
       }
@@ -244,17 +264,16 @@ const handleResponseChange = (group, fieldName, value) => {
     }
   };
   
-  const groups = surveyData ? surveyData.question_groups.map((group) => group.groups) : [];
+  const groups = surveyData ? surveyData.question_groups : [];
   const filteredGroups = getFilteredGroups(groups, role);
   const filteredGroupNames = filteredGroups.map(group => group.groupName);
   const selectedGroup = filteredGroups[selectedGroupIndex] || null;
   const isFirstGroup = selectedGroupIndex === 0;
   const isLastGroup = selectedGroupIndex === filteredGroups.length - 1;
-
   const userResponse = surveyResponseByAppId?.find(
     (response) => response.userId === userData.id
   );
-  
+
   if (userResponse && !isEditing && userData.role != "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f") {
     return (
       <FallbackScreen
@@ -272,7 +291,6 @@ const handleResponseChange = (group, fieldName, value) => {
       <button
         className="mb-4 flex items-center text-blue-600 hover:text-blue-800 cursor-pointer"
         onClick={() => {
-            // window.location.href = "/landingpage"; 
             navigate('/landingpage')
         }}
       >

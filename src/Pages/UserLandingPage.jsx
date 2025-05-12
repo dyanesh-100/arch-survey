@@ -7,19 +7,24 @@ import ApplicationList from "../Components/ApplicationList";
 import LogoutButton from "../Components/LogoutButton";
 
 const UserLandingPage = () => {
-  
-  const { applications,userData } = useGlobalContext();
+  const { applications, userData } = useGlobalContext();
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
-  const { fetchApplications,fetchUserData } = useApiService();
+  const { fetchApplications, fetchUserData } = useApiService();
+  
   useEffect(() => {
-      if (!userData || Object.keys(userData).length === 0) {
-        fetchUserData();
-      }
-    }, [userData, fetchUserData]);
+    if (!userData || Object.keys(userData).length === 0) {
+      fetchUserData();
+    }
+  }, [userData, fetchUserData]);
+
   useEffect(() => {
     fetchApplications(); 
   }, []);
+
+  const filteredApplications = applications?.filter(app => 
+    app.surveyStatus === "Survey started" || app.surveyStatus === "Survey completed"
+  ) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-100 via-pink-100 to-orange-100 flex items-center justify-center p-6">
@@ -40,10 +45,18 @@ const UserLandingPage = () => {
         </motion.div>
 
         <div className="mt-8">
-          <ApplicationList 
-            applications={applications}  
-            onSelect={(app) => navigate(`/survey/${app.uuid}`)} 
-          />
+          {filteredApplications.length > 0 ? (
+            <ApplicationList 
+              applications={filteredApplications}  
+              onSelect={(app) => navigate(`/survey/${app.uuid}`)} 
+            />
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 text-lg">
+                No surveys available at the moment. Please check back later.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

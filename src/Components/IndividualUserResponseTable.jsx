@@ -1,14 +1,27 @@
-// UserResponseTable.jsx
 import React from "react";
 
-const IndividualUserResponseTable = ({ userName, role, responseMap, fieldNames }) => {
+const IndividualUserResponseTable = ({ userName, role, responseMap, evaluationParameters }) => {
+  const excludedParameters = [
+    "app_name",
+    "app_description",
+    "business_unit",
+    "business_owner",
+    "it_owner",
+    "engineering_owner"
+  ];
+
+  // Filter out the excluded parameters
+  const filteredParameters = evaluationParameters.filter(
+    param => !excludedParameters.includes(param)
+  );
+
   const formatResponse = (response) => {
     if (Array.isArray(response)) {
       return response.join(", ");
     }
     return response || "N/A";
   };
-
+ 
   return (
     <div className="bg-white shadow-lg rounded-lg p-6 border border-gray-200">
       <div className="mb-4">
@@ -20,24 +33,24 @@ const IndividualUserResponseTable = ({ userName, role, responseMap, fieldNames }
         <table className="min-w-full bg-white border border-gray-300 shadow-md rounded-md">
           <thead className="bg-gray-200">
             <tr>
-              {fieldNames.map((fieldName) => (
+              {filteredParameters.map((param) => (
                 <th
-                  key={fieldName}
+                  key={param}
                   className="border p-3 text-left text-gray-600"
                 >
-                  {fieldName}
+                  {param}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             <tr className="hover:bg-gray-50">
-              {fieldNames.map((fieldName) => (
+              {filteredParameters.map((param) => (
                 <td
-                  key={fieldName}
+                  key={param}
                   className="border p-3 text-gray-700"
                 >
-                  {formatResponse(responseMap[fieldName])}
+                  {formatResponse(responseMap[param])}
                 </td>
               ))}
             </tr>

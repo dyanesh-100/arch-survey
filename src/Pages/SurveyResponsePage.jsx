@@ -10,34 +10,43 @@ const SurveyResponsePage = () => {
     axiosInstanceDirectus
       .get(`/survey_responses`)
       .then((response) => {
-        const fetchedData = response.data.data;
-        
-        const flattenedResponses = fetchedData.map(item => {
-          const flattened = { ...item };
-          
-          item.response.forEach(({ fieldName, response }) => {
-            flattened[fieldName] = response;
-          });
-          
-          delete flattened.response;
-          
-          return flattened;
-        });
-
-        setResponses(flattenedResponses);
+        const responseData = response.data.data || response.data;
+        const fetchedData = Array.isArray(responseData) ? responseData : [responseData];
+        setResponses(fetchedData);
       })
       .catch((error) => console.error("Error fetching application details:", error));
   }, []);
 
+  
+  const adminResponses = responses.filter(response => response.role === "Admin");
+
   const downloadCSV = () => {
-    if (responses.length === 0) return;
+    if (adminResponses.length === 0) return;
+    const allParams = new Set();
+    adminResponses.forEach(response => {
+      if (response.response && Array.isArray(response.response)) {
+        response.response.forEach(item => {
+          allParams.add(item.evaluation_parameter);
+        });
+      }
+    });
 
-    const filteredKeys = Object.keys(responses[0]).filter(key => key !== "_id" && key !== "__v"); 
+    const headers = ["appId", "role", ...Array.from(allParams)];
+    let csvContent = headers.join(",") + "\n";
 
-    let csvContent = filteredKeys.join(",") + "\n";
+    adminResponses.forEach(response => {
+      const rowData = {
+        appId: response.appId || "",
+        role: response.role || ""
+      };
 
-    responses.forEach(response => {
-      let row = filteredKeys.map(key => `"${response[key] ?? ""}"`).join(",");
+      if (response.response && Array.isArray(response.response)) {
+        response.response.forEach(item => {
+          rowData[item.evaluation_parameter] = item.response || "";
+        });
+      }
+
+      const row = headers.map(header => `"${rowData[header] || ""}"`).join(",");
       csvContent += row + "\n";
     });
 
@@ -45,18 +54,44 @@ const SurveyResponsePage = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "survey_responses.csv");
+    link.setAttribute("download", "survey_responses_admin.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  const getFlattenedResponse = (response) => {
+    const flattened = {
+      appId: response.appId || "",
+      role: response.role || ""
+    };
+
+    if (response.response && Array.isArray(response.response)) {
+      response.response.forEach(item => {
+        flattened[item.evaluation_parameter] = item.response || "";
+      });
+    }
+
+    return flattened;
+  };
+  const getAllEvaluationParameters = () => {
+    const params = new Set();
+    adminResponses.forEach(response => {
+      if (response.response && Array.isArray(response.response)) {
+        response.response.forEach(item => {
+          params.add(item.evaluation_parameter);
+        });
+      }
+    });
+    return Array.from(params);
+  };
+
   return (
     <div className="w-full p-6">
-      <h1 className="text-2xl font-semibold mb-4">Survey Responses</h1>
+      <h1 className="text-2xl font-semibold mb-4">Finalized Survey Responses</h1>
 
-      {responses.length === 0 ? (
-        <p className="text-gray-500">No responses found.</p>
+      {adminResponses.length === 0 ? (
+        <p className="text-gray-500">No admin responses found.</p>
       ) : (
         <>
           <button
@@ -70,32 +105,41 @@ const SurveyResponsePage = () => {
             <table className="min-w-full bg-white border border-gray-300 shadow-md">
               <thead className="bg-gray-200">
                 <tr>
-                  {Object.keys(responses[0])
-                    .filter(key => key !== "_id" && key !== "__v") 
-                    .map((key) => (
-                      <th key={key} className="border p-2 text-left">{key}</th>
-                    ))}
+                  <th className="border p-2 text-left">appId</th>
+                  <th className="border p-2 text-left">role</th>
+                  {getAllEvaluationParameters().map(param => (
+                    <th key={param} className="border p-2 text-left">{param}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {responses.map((response, index) => (
-                  <tr key={index} className="hover:bg-gray-100">
-                    {Object.keys(response)
-                      .filter(key => key !== "_id" && key !== "__v")
-                      .map((key) => (
-                        <td key={key} className="border p-2">{String(response[key])}</td>
+                {adminResponses.map((response, index) => {
+                  const flattened = getFlattenedResponse(response);
+                  return (
+                    <tr key={index} className="hover:bg-gray-100">
+                      <td className="border p-2">{flattened.appId}</td>
+                      <td className="border p-2">{flattened.role}</td>
+                      {getAllEvaluationParameters().map(param => (
+                        <td key={`${index}-${param}`} className="border p-2">
+                          {flattened[param] || ""}
+                        </td>
                       ))}
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </>
       )}
-      <button className="bg-blue-500 text-white p-2 rounded mt-4" onClick={() => navigate("/landingpage")}>
+      <button 
+        className="bg-blue-500 text-white p-2 rounded mt-4" 
+        onClick={() => navigate("/landingpage")}
+      >
         Go Back
       </button>
     </div>
   );
 };
+
 export default SurveyResponsePage;
