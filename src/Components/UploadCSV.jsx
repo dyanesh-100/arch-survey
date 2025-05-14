@@ -1,6 +1,8 @@
 import React from "react";
 
 const UploadCSV = ({file, mappedData, onUpload}) => {  
+  console.log(mappedData);
+  
   const handleUpload = () => {
     if (!file) {
       alert("Please select a file first");
@@ -19,7 +21,7 @@ const UploadCSV = ({file, mappedData, onUpload}) => {
       disabled={!file || !mappedData}
       className={`w-full py-3 px-4 rounded-lg text-white font-medium ${
         !file || !mappedData
-          ? "bg-green-600 hover:bg-green-700"
+          ? "bg-gray-400 cursor-not-allowed"
           : "bg-green-600 hover:bg-green-700"
       }`}
     >

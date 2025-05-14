@@ -33,6 +33,7 @@ const SurveyPage = () => {
   
   useEffect(() => {
     const initializeData = async () => {
+      
       const promises = [];
 
       if (!userData || Object.keys(userData).length === 0) {
