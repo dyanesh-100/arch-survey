@@ -2,29 +2,30 @@ import React, { useState } from "react";
 import { login } from "../Services/authService";
 import { useNavigate } from "react-router-dom";
 import { useApiService } from "../Services/apiService";
+import { toast } from "react-toastify"; // ✅ Import toast
+import "react-toastify/dist/ReactToastify.css"; // ✅ Make sure this is included globally
 
 const LoginPage = () => {
-  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const {fetchUserData } = useApiService();
+  const { fetchUserData } = useApiService();
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    
+
     try {
       await login(email, password);
       await fetchUserData();
-      alert("Login successful!");
+      toast.success("Login successful!"); 
       navigate("/landingpage");
-      
     } catch (error) {
       setError("Login failed. Please check your credentials.");
+      toast.error("Login failed. Please check your credentials."); 
     } finally {
       setLoading(false);
     }

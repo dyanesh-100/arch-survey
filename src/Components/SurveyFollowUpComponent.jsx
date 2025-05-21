@@ -107,10 +107,10 @@ const SurveyFollowUpComponent = ({ surveyResponseByAppId, applicationById }) => 
         message: "Hi there! We kindly remind you to participate in the survey...",
       }];
       const [notificationResponse] = await Promise.all([
-        axios.post("http://localhost:8055/notifications", notificationPayload, {
+        axiosInstanceDirectus.post("/notifications", notificationPayload, {
           withCredentials: true
         }),
-        axiosInstanceDirectus.patch(`/application_stakeholders/${stakeholderId}`, {
+        axiosInstanceDirectus.patch(`/items/application_stakeholders/${stakeholderId}`, {
           reminderSentTime: timestamp.toISOString()
         })
       ]);
@@ -172,81 +172,71 @@ const SurveyFollowUpComponent = ({ surveyResponseByAppId, applicationById }) => 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Stakeholder
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stakeholder</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               {hasSubmittedResponses && (
                 <>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Submitted On
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Updated On
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted On</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated On</th>
                 </>
               )}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {stakeholdersWithStatus.map((stakeholder, index) => (
-              <tr key={index}>
+              <tr key={index} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {stakeholder.name}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                   {stakeholder.role}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                   {stakeholder.email}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     stakeholder.status === 'Submitted the response' 
                       ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                      : 'bg-amber-100 text-amber-800'
                   }`}>
                     {stakeholder.status}
                   </span>
                 </td>
                 {hasSubmittedResponses && (
                   <>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {stakeholder.submittedOn || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {stakeholder.updatedOn || '-'}
                     </td>
                   </>
                 )}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                   {stakeholder.status !== 'Submitted the response' && (
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleSendReminder(stakeholder.email)}
                         disabled={isLoading}
-                        className={`px-3 py-1 rounded-md text-xs font-medium ${
+                        className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors ${
                           reminders[stakeholder.email]
-                            ? 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                        } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            ? 'bg-gray-200 text-gray-800 border-gray-300 hover:bg-gray-300'
+                            : 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
+                        } ${
+                          isLoading ? 'opacity-50 cursor-not-allowed' : 'shadow-xs'
+                        }`}
                       >
                         {isLoading ? 'Sending...' : 
                         reminders[stakeholder.email] ? 'Send Again' : 'Send Reminder'}
                       </button>
                       {reminders[stakeholder.email] && (
-                        <TimeAgo date={reminders[stakeholder.email]} />
+                        <span className="text-xs text-gray-500">
+                          <TimeAgo date={reminders[stakeholder.email]} />
+                        </span>
                       )}
                     </div>
                   )}

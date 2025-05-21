@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import axiosInstanceDirectus from "../axiosInstanceDirectus";
 
 const InviteHandler = () => {
   const [password, setPassword] = useState("");
@@ -26,7 +26,7 @@ const InviteHandler = () => {
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:8055/users/invite/accept", {
+      const res = await axiosInstanceDirectus.post("/users/invite/accept", {
         token,
         password,
       });

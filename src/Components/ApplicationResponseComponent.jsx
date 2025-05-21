@@ -21,8 +21,6 @@ const ApplicationResponseComponent = ({
   const updateConsolidatedResponses = useCallback(() => {
     const groupedResponses = {};
     const adminResponse = surveyResponseByAppId.find(item => item.role === "Admin");
-    
-    // If admin response exists, use only that
     if (adminResponse) {
       adminResponse.response.forEach(({ evaluation_parameter, response: responseValue }) => {
         if (!groupedResponses[evaluation_parameter]) {
@@ -31,7 +29,6 @@ const ApplicationResponseComponent = ({
         groupedResponses[evaluation_parameter].push({ response: responseValue });
       });
     } else {
-      // Otherwise, collect all non-admin responses as before
       surveyResponseByAppId.forEach(({ role, response }) => {
         if (role !== "Admin") {
           response.forEach(({ group, evaluation_parameter, response: responseValue }) => {
@@ -180,19 +177,6 @@ const ApplicationResponseComponent = ({
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         Survey Responses
       </h1>
-  
-      <div className="space-y-6">
-        {userResponses.map(({ userName, role, responseMap }, index) => (
-          <IndividualUserResponseTable
-            key={index}
-            userName={userName}
-            role={role}
-            responseMap={responseMap}
-            evaluationParameters={evaluationParameters}
-          />
-        ))}
-      </div>
-  
       <div className="mt-8">
         <ConsolidatedUserResponsesTable
           groupedResponses={groupedResponses}
@@ -204,7 +188,18 @@ const ApplicationResponseComponent = ({
           onAddResponse={handleAddResponse}
           handleSubmit={handleSubmit}
         />
-      </div>      
+      </div>    
+      <div className="space-y-6">
+        {userResponses.map(({ userName, role, responseMap }, index) => (
+          <IndividualUserResponseTable
+            key={index}
+            userName={userName}
+            role={role}
+            responseMap={responseMap}
+            evaluationParameters={evaluationParameters}
+          />
+        ))}
+      </div>  
     </div>
   );
 };

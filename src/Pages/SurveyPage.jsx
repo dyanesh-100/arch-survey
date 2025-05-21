@@ -1,7 +1,8 @@
 import React, { useState, useEffect,useRef } from "react";
+import { useMemo } from 'react';
 import SurveyQuestionsComponent from "../Components/SurveyQuestionsComponent";
 import ApplicationMetaDataComponent from "../Components/ApplicationMetaDataComponent";
-import { useParams,useNavigate} from "react-router-dom";
+import { useParams,useNavigate, useLocation} from "react-router-dom";
 import TabNavigation from "../Components/TabNavigation";
 import { useGlobalContext } from "../Context/GlobalContext"; 
 import { useApiService } from "../Services/apiService";
@@ -10,27 +11,56 @@ import FallbackScreen from "../Components/FallBackScreen";
 import ApplicationResponseComponent from "../Components/ApplicationResponseComponent";
 import SurveyInitializingComponent from "../Components/SurveyInitializingComponent";
 import SurveyFollowUpComponent from "../Components/SurveyFollowUpComponent";
+import { toast } from "react-toastify";
 
 const SurveyPage = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const { applicationUUID } = useParams();
-  const {surveyStarted,applicationById,selectedGroupIndex, setSelectedGroupIndex,loading,surveyData,userData,surveyResponseByUserId,surveyResponseByAppId,isSurveySubmitted, setIsSurveySubmitted,setIsFinalResponseSubmitted,isFinalResponseSubmitted} = useGlobalContext();
+  const {surveyStarted,applicationById,selectedGroupIndex, setSelectedGroupIndex,loading,surveyData,userData,surveyResponseByUserId,surveyResponseByAppId,isSurveySubmitted, setIsSurveySubmitted,setIsFinalResponseSubmitted,isFinalResponseSubmitted,currentPage} = useGlobalContext();
   const [responses, setResponses] = useState({});
+  const [resolvedAppId, setResolvedAppId] = useState("");
   const surveyRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [consolidatedResponses, setConsolidatedResponses] = useState([]);
+  const queryParams = new URLSearchParams(location.search);
+  const page = queryParams.get('page') || 1;
   const [selectedTab, setSelectedTab] = useState("Stakeholders"); 
   const {fetchUserData, fetchApplicationById, fetchSurveyData, fetchSurveyResponseByUserId,fetchSurveyResponseByAppId,fetchStakeholdersDataByApp } = useApiService();
   const surveyId = surveyData?.surveyId || "";
-  const applicationId = applicationById?.applicationId || "";
-  const userId = userData?.id || "";
-  const userName = userData?.email?.split('@')[0] || '';
-  const emailId = userData?.email || "";
-  const role = userData?.email === applicationById?.businessOwner ? 'Business Owner' 
-  : userData?.email === applicationById?.itOwner ? 'IT Owner'
-  : userData?.email === applicationById?.engineeringOwner ? 'Engineering Owner'
-  : 'Unknown Role'; 
-  
+  const {
+    applicationId,
+    userId,
+    userName,
+    emailId,
+    role
+  } = useMemo(() => {
+    const appId = applicationById?.applicationId || '';
+    const uId = userData?.id || '';
+    const email = userData?.email || '';
+    const name = email.split('@')[0] || '';
+
+    const derivedRole = email === applicationById?.businessOwner
+      ? 'Business Owner'
+      : email === applicationById?.itOwner
+      ? 'IT Owner'
+      : email === applicationById?.engineeringOwner
+      ? 'Engineering Owner'
+      : 'Unknown Role';
+
+    return {
+      applicationId: appId,
+      userId: uId,
+      userName: name,
+      emailId: email,
+      role: derivedRole
+    };
+  }, [applicationById, userData]);
+  useEffect(() => {
+    if (applicationId) {
+      setResolvedAppId(applicationId);
+    }
+  }, [applicationId]);
   useEffect(() => {
     const initializeData = async () => {
       
@@ -63,12 +93,11 @@ const SurveyPage = () => {
       fetchSurveyResponseByUserId(surveyId, userId);
     }
   }, [isSurveySubmitted, surveyId, userId,applicationUUID]);
-
   useEffect(() => {
-    if (surveyId && applicationId ) {
-      fetchSurveyResponseByAppId(surveyId, applicationId);
-    }
-  }, [isSurveySubmitted, surveyId, applicationId,applicationUUID]);
+      if (resolvedAppId && surveyId) {
+        fetchSurveyResponseByAppId(surveyId, applicationId);
+      }
+  }, [isSurveySubmitted, resolvedAppId,applicationUUID]);
 
   useEffect(() => {
     if (applicationId) {
@@ -167,16 +196,18 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
     );
     try {  
       if (surveyResponseByAppId?.length > 0 && surveyResponseByUserId[0]?.responseId && userResponseOfspecificApp !== undefined) {
-        await axiosInstanceDirectus.patch(`/survey_responses/${responseId}`, {
+        await axiosInstanceDirectus.patch(`/items/survey_responses/${responseId}`, {
           response: formattedResponses,
         });
       } 
       else if (surveyResponseByUserId?.some(response => response.userId === userData.id && response.appId === applicationId)) {
-        alert("You have already submitted this survey.");
+        toast.info('You have already submitted this survey', {
+          autoClose: 4000
+        });
         return;
-      }  
+      }
       else {     
-        await axiosInstanceDirectus.post("/survey_responses", {
+        await axiosInstanceDirectus.post("/items/survey_responses", {
           appId :applicationId,
           responseId: crypto.randomUUID(),
           userId,
@@ -187,7 +218,7 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
           response: formattedResponses 
         });
       }
-      await axiosInstanceDirectus.patch(`/applications/${applicationId}`, {
+      await axiosInstanceDirectus.patch(`/items/applications/${applicationId}`, {
       applicationDescription: responses.General?.app_description || applicationById?.applicationDescription,
       businessOwner: responses.General?.business_owner || applicationById?.businessOwner,
       businessUnit: responses.General?.business_unit || applicationById?.businessUnit,
@@ -198,8 +229,13 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
       setIsSurveySubmitted(true);
       setIsEditing(false)
     } catch (error) {
-      alert(error);
-    }
+        console.error('Operation failed:', error);
+        toast.error(
+          typeof error === 'string' ? error : 
+          error.message || 'An unexpected error occurred',
+          { autoClose: 6000 }
+        );
+      }
   };  
   const handleAdminSubmit = async () => {
     try {
@@ -207,7 +243,7 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
       const adminResponseId = surveyResponseByAppId.find(item => item.role === "Admin")?.responseId;
       if (surveyResponseByAppId?.length > 0 && userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" &&
         (isFinalResponseSubmitted || adminResponseId !== undefined)) {
-        await axiosInstanceDirectus.patch(`/survey_responses/${adminResponseId}`, {
+        await axiosInstanceDirectus.patch(`/items/survey_responses/${adminResponseId}`, {
           response: consolidatedResponses,
           userId,
           userName,
@@ -216,7 +252,7 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
         });
         action = "updated";
       } else {
-        await axiosInstanceDirectus.post("/survey_responses", {
+        await axiosInstanceDirectus.post("/items/survey_responses", {
           appId: applicationId,
           responseId: crypto.randomUUID(),
           userId,
@@ -227,16 +263,19 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
           response: consolidatedResponses
         });
         await axiosInstanceDirectus.patch(
-          `/applications/${applicationById.applicationId}`,
+          `/items/applications/${applicationById.applicationId}`,
           { surveyStatus: "Survey completed" }
         );
         action = "submitted";
         setIsFinalResponseSubmitted(true); 
       }
-      alert(`Consolidated responses ${action} successfully!`);
+      toast.success(`Responses ${action} successfully!`);
     } catch (error) {
-      alert("Error submitting consolidated responses");
-      console.error(error);
+      console.error('Failed to submit consolidated responses:', error);
+      toast.error(
+        `Failed to submit responses: ${error.response?.data?.message || error.message || 'Please try again'}`,
+        { autoClose: 6000 }
+      );
     }
   };
   if (loading) {
@@ -287,16 +326,17 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
       />
     );
   }
+  
   return (
     <div className="h-screen bg-gray-100 p-6 overflow-auto">
       <button
         className="mb-4 flex items-center text-blue-600 hover:text-blue-800 cursor-pointer"
         onClick={() => {
-            navigate('/landingpage')
+          navigate(`/landingpage?page=${page}`);
         }}
       >
-      <span className="mr-2">⬅</span> Back to Search
-    </button>
+        <span className="mr-2">⬅</span> Back to Search
+      </button>
       {applicationById && (
         <>
           <ApplicationMetaDataComponent application={applicationById} />

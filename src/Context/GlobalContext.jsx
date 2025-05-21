@@ -17,6 +17,7 @@ export const GlobalProvider = ({ children }) => {
     const [isSurveySubmitted, setIsSurveySubmitted] = useState(false);
     const [isFinalResponseSubmitted, setIsFinalResponseSubmitted] = useState(false);
     const [surveyStarted, setSurveyStarted] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
     return (
         <GlobalContext.Provider value={{ 
             surveyData, setSurveyData,
@@ -33,6 +34,7 @@ export const GlobalProvider = ({ children }) => {
             isSurveySubmitted, setIsSurveySubmitted,
             isFinalResponseSubmitted, setIsFinalResponseSubmitted,
             surveyStarted, setSurveyStarted,
+            currentPage, setCurrentPage,
             otherGlobalState, setOtherGlobalState 
         }}>
             {children}

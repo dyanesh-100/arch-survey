@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosInstanceDirectus = axios.create({
-    baseURL: 'http://localhost:8055/items',
+    baseURL: 'http://localhost:8055',
     withCredentials: true, 
 });
 axiosInstanceDirectus.interceptors.response.use(

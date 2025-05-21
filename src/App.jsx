@@ -9,6 +9,9 @@ import LoginPage from './Pages/LoginPage';
 import InviteHandler from './Pages/InviteHandler';
 import UserLandingPage from './Pages/UserLandingPage';
 import DataUploadPage from './Pages/DataUploadPage';
+import QuestionsPreviewPage from './Pages/QuestionsPreviewPage';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ADMIN_UUID = "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f";
 const App = () => {
@@ -25,6 +28,18 @@ const App = () => {
   
   return (
     <BrowserRouter>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick={true}
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/invitehandler" element={<InviteHandler/>} />
@@ -35,6 +50,7 @@ const App = () => {
                 } />
         <Route path="/survey/:applicationUUID" element={<SurveyPage />} />
         <Route path="/responses" element={<SurveyResponsePage />} />
+        <Route path="/questionspreview" element={<QuestionsPreviewPage />} />
         <Route path="/upload/:uploadType" element={<DataUploadPage />} />
       </Routes>
     </BrowserRouter>

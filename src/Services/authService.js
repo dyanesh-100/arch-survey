@@ -1,14 +1,14 @@
 import axios from "axios";
+import axiosInstanceDirectus from "../axiosInstanceDirectus";
 
-const API_URL = "http://localhost:8055/auth";
 const REFRESH_INTERVAL = 10 * 60 * 1000;
 
 axios.defaults.withCredentials = true;
 
 export const login = async (email, password) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/login`,
+    const response = await axiosInstanceDirectus.post(
+      "/auth/login",
       {
         email,
         password,
@@ -29,7 +29,7 @@ export const login = async (email, password) => {
 
 export const refreshToken = async () => {
   try {
-    const response = await axios.post(`${API_URL}/refresh`, { mode: "session" });    
+    const response = await axiosInstanceDirectus.post("/auth/refresh", { mode: "session" });    
     const nextRefreshTime = Date.now() + REFRESH_INTERVAL;
     localStorage.setItem("next_refresh_time", nextRefreshTime.toString());
     
@@ -61,7 +61,7 @@ export const startTokenRefresh = () => {
 
 export const logout = async () => {
   try {
-    await axios.post(`${API_URL}/logout`, { mode: "session" });
+    await axiosInstanceDirectus.post("/auth/logout", { mode: "session" });
     localStorage.removeItem("next_refresh_time");
     if (window.refreshTimer) {
       clearTimeout(window.refreshTimer);

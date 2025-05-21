@@ -1,20 +1,43 @@
-import React from "react";
+import { toast } from "react-toastify";
 
 const UploadCSV = ({file, mappedData, onUpload}) => {  
-  console.log(mappedData);
-  
   const handleUpload = () => {
     if (!file) {
-      alert("Please select a file first");
+      toast.error('Please select a file first', {
+        position: 'top-right',
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
-    if (!mappedData || mappedData.length === 0) {
-      alert("Please complete the field mapping first");
-      return;
-    }
-    onUpload();
-  };
 
+    if (!mappedData || mappedData.length === 0) {
+      toast.warning('Please complete the field mapping before uploading', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      return;
+    }
+
+
+    try {
+      onUpload();
+    } catch (error) {
+      toast.error( {
+        render: `Upload failed: ${error.message}`,
+        type: 'error',
+        isLoading: false,
+        autoClose: 6000
+      });
+    }
+  };
   return (
     <button
       onClick={handleUpload}

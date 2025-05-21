@@ -20,7 +20,7 @@ export const useApiService = () => {
   const fetchApplications = async () => {
     try {
       if (applications.length > 0) return;
-      const response = await axiosInstanceDirectus.get("/applications");
+      const response = await axiosInstanceDirectus.get("/items/applications");
       if (response.data && Array.isArray(response.data.data)) {
         setApplications(response.data.data);
       } else {
@@ -36,7 +36,7 @@ export const useApiService = () => {
   const fetchUserData = async () => {
     try {
       if (userData && Object.keys(userData).length > 0) return;
-      const response = await axios.get("http://localhost:8055/users/me", { withCredentials: true });
+      const response = await axiosInstanceDirectus.get("/users/me", { withCredentials: true });
       if (response.data && response.data.data) {
         setUserData(response.data.data);
       } else {
@@ -49,8 +49,8 @@ export const useApiService = () => {
   };
   const fetchUserDataByEmail = async (email) => {
     try {
-      const response = await axios.get(
-        `http://localhost:8055/users?filter[email][_eq]=${email}`,
+      const response = await axiosInstanceDirectus.get(
+        `/users?filter[email][_eq]=${email}`,
         { withCredentials: true }
       );
       if (response.data && response.data.data) {
@@ -69,7 +69,7 @@ export const useApiService = () => {
   const fetchApplicationById = async (applicationUUID) => {
     try {
       setLoading(true);
-      const response = await axiosInstanceDirectus.get(`/applications?filter[uuid][_eq]=${applicationUUID}`);
+      const response = await axiosInstanceDirectus.get(`/items/applications?filter[uuid][_eq]=${applicationUUID}`);
       if (response.data?.data?.length > 0) {
         setApplicationById(response.data.data[0]);
       } else {
@@ -84,7 +84,7 @@ export const useApiService = () => {
   const fetchSurveyData = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstanceDirectus.get("/surveys?fields=surveyId,surveyTitle,question_groups.groupId,question_groups.groupName,question_groups.questions.question_id,question_groups.questions.question,question_groups.questions.response_type,question_groups.questions.options,question_groups.questions.evaluation_parameter");
+      const response = await axiosInstanceDirectus.get("/items/surveys?fields=surveyId,surveyTitle,question_groups.groupId,question_groups.groupName,question_groups.questions.question_id,question_groups.questions.question,question_groups.questions.response_type,question_groups.questions.options,question_groups.questions.evaluation_parameter");
       if (response.data && response.data.data.length > 0) {
         setSurveyData(response.data.data[0]);
         setSelectedGroupIndex(0);
@@ -98,7 +98,7 @@ export const useApiService = () => {
   const fetchStakeholdersDataByEmail = async (email) => {
     try {
       const response = await axiosInstanceDirectus.get(
-        `/application_stakeholders?filter[email][_eq]=${email}`
+        `/items/application_stakeholders?filter[email][_eq]=${email}`
       );
       if (response.data && response.data.data) {
         return response.data.data;
@@ -112,7 +112,7 @@ export const useApiService = () => {
   const fetchStakeholdersDataByApp = async (applicationId) => {
     try {
       const response = await axiosInstanceDirectus.get(
-        `/application_stakeholders?filter[applicationId][_eq]=${applicationId}`
+        `/items/application_stakeholders?filter[applicationId][_eq]=${applicationId}`
       );
       if (response.data && response.data.data) {
         setStakeHoldersData(response.data.data);
@@ -130,7 +130,7 @@ export const useApiService = () => {
   const fetchSurveyResponseByUserId = async (surveyId, userId) => {
     try {
       setLoading(true);
-      const response = await axiosInstanceDirectus.get(`survey_responses?filter[surveyId][_eq]=${surveyId}&filter[userId][_eq]=${userId}`);
+      const response = await axiosInstanceDirectus.get(`/items/survey_responses?filter[surveyId][_eq]=${surveyId}&filter[userId][_eq]=${userId}`);
       if (response.data?.data?.length > 0) {
         setSurveyResponseByUserId(response.data.data);
       } else {
@@ -147,7 +147,7 @@ export const useApiService = () => {
     try {
       setLoading(true);
       const response = await axiosInstanceDirectus.get(
-        `survey_responses?filter[surveyId][_eq]=${surveyId}&filter[appId][_eq]=${applicationId}`
+        `/items/survey_responses?filter[surveyId][_eq]=${surveyId}&filter[appId][_eq]=${applicationId}`
       );
   
       if (response.data?.data?.length > 0) {

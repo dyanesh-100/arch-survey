@@ -15,11 +15,12 @@ const DataUploadPage = () => {
   const [unMappedData, setUnMappedData] = useState(null); 
   const [file, setFile] = useState(null);
   const [isUploaded, setIsUploaded] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
   const [updatedCount, setUpdatedCount] = useState(0);
   const apiEndpoints = {
-    applications: "/applications",
-    questions: "/questions",
+    applications: "/items/applications",
+    questions: "/items/questions",
   };
   const instructions = {
     applications: [
@@ -54,38 +55,69 @@ const DataUploadPage = () => {
     : "#"; 
   const imageDetails = sampleFormat[uploadType] || { format: "", image: "" };
 
+  const mapQuestionGroupToId = (questionGroup) => {
+    const groupMappings = {
+      'general': 'grp-100',
+      'business': 'grp-101',
+      'technical': 'grp-102',
+      'risk': 'grp-103',
+      'cost': 'grp-104'
+    };
+    if (groupMappings[questionGroup]) {
+      return groupMappings[questionGroup];
+    }
+
+    const existingGroups = Object.keys(groupMappings);
+    const nextIdNumber = 105 + (existingGroups.length - 5);
+    return `grp-${nextIdNumber}`;
+  };
+
+  const transformQuestionsData = (data) => {
+    return data.map(item => {
+      const transformedItem = { ...item };
+      if (item.question_group) {
+        transformedItem.question_group = mapQuestionGroupToId(item.question_group);
+      }
+      
+      return transformedItem;
+    });
+  };
   const handleUpload = async () => {
     if (!mappedData) {
-      alert("Please complete the configuration first");
+      toast.warning('Please complete the configuration before proceeding');
       return;
     }
-  
+    
     try {
+      setIsUploading(true);
+      if (uploadType === 'questions' || uploadType === 'applications') {
+        await handleGroupsUpload();
+      }
+      const dataToUpload = uploadType === 'questions' 
+        ? transformQuestionsData(mappedData) 
+        : mappedData;
       const fieldKey = uploadType === 'applications' ? 'applicationId' : 'evaluation_parameter';
-  
-      // Get existing items
-      const existingItemsResponse = await axiosInstanceDirectus.get(`/${uploadType}`, {
+      const existingItemsResponse = await axiosInstanceDirectus.get(`/items/${uploadType}`, {
         params: {
           fields: uploadType === 'applications' ? ['applicationId'] : ['id', 'evaluation_parameter'],
           filter: {
             [fieldKey]: {
-              _in: mappedData.map(item => item[fieldKey])
+              _in: dataToUpload.map(item => item[fieldKey])
             }
           }
         }
       });
-  
-      // Prepare lookup for updates
+      
       const existingItemsMap = uploadType === 'applications'
         ? (existingItemsResponse.data.data || []).map(item => item.applicationId)
         : (existingItemsResponse.data.data || []).reduce((acc, item) => {
-            acc[item.evaluation_parameter] = item.id; // ID is the PK
+            acc[item.evaluation_parameter] = item.id;
             return acc;
           }, {});
-  
+
       const results = await Promise.all(
-        mappedData.map(async (item) => {
-          const endpoint = `/${uploadType}`;
+        dataToUpload.map(async (item) => {
+          const endpoint = `/items/${uploadType}`;
           const isUpdate = uploadType === 'applications'
             ? existingItemsMap.includes(item.applicationId)
             : !!existingItemsMap[item.evaluation_parameter];
@@ -93,7 +125,7 @@ const DataUploadPage = () => {
           const updateId = uploadType === 'applications'
             ? item.applicationId
             : existingItemsMap[item.evaluation_parameter];
-  
+
           if (isUpdate) {
             const updateResponse = await axiosInstanceDirectus.patch(
               `${endpoint}/${updateId}`,
@@ -131,27 +163,32 @@ const DataUploadPage = () => {
           }
         })
       );
-  
+
       if (uploadType === 'applications') {
         await handleApplicationStakeholders(results);
-        await handleDefaultAppQuestions();
         if (unMappedData) {
           await handleUnMappedFields(unMappedData);
         }
       }
-  
+      if (uploadType === 'questions' || uploadType === 'applications') {
+        await handleDefaultAppQuestions();
+      }
+
       const createdCount = results.filter(r => r.action === 'created').length;
       const updatedCount = results.filter(r => r.action === 'updated').length;
       setCreatedCount(createdCount);
       setUpdatedCount(updatedCount);
       setIsUploaded(true);
-  
+
     } catch (error) {
       console.error('Upload error:', error);
-      alert(`Error processing ${uploadType}: ${error.response?.data?.errors?.[0]?.message || error.message}`);
+      const errorMessage = error.response?.data?.errors?.[0]?.message || error.message;
+      toast.error(`Upload failed: ${errorMessage}`);
+    }
+    finally {
+      setIsUploading(false);
     }
   };
-  
   const handleDefaultAppQuestions = async () => {
     const defaultQuestions = [
       {
@@ -198,13 +235,13 @@ const DataUploadPage = () => {
         question_id: "q-2006",
         question: "Who is the Engineering owner of the application?",
         response_type: "text",
-        evaluation_parameter: "it_owner",
+        evaluation_parameter: "engineering_owner",
         options: [],
         question_group: "grp-100",
       }
     ];
     try {
-      const { data } = await axiosInstanceDirectus.get('/questions', {
+      const { data } = await axiosInstanceDirectus.get('/items/questions', {
         params: {
           fields: 'question_id',
           limit: -1
@@ -219,10 +256,9 @@ const DataUploadPage = () => {
       if (noneExist) {
         const responses = await Promise.all(
           defaultQuestions.map((question) =>
-            axiosInstanceDirectus.post('/questions', question)
+            axiosInstanceDirectus.post('/items/questions', question)
           )
         );
-        console.log("Default questions posted successfully:", responses);
       } else {
         console.log("Some default questions already exist. Skipping post.");
       }
@@ -230,9 +266,73 @@ const DataUploadPage = () => {
       console.error("Error processing default questions:", error);
     }
   };
+  const handleGroupsUpload = async () => {
+    const groups = [
+      {
+        groupId: "grp-100",
+        groupName: "General",
+        survey: "survey-101",
+      },
+      {
+        groupId: "grp-101",
+        groupName: "Business",
+        survey: "survey-101",
+      },
+      {
+        groupId: "grp-102",
+        groupName: "Technical",
+        survey: "survey-101",
+      },
+      {
+        groupId: "grp-103",
+        groupName: "Risk",
+        survey: "survey-101",
+      },
+      {
+        groupId: "grp-104",
+        groupName: "Cost",
+        survey: "survey-101",
+      },
+    ];
+
+    try {
+      const { data } = await axiosInstanceDirectus.get('/items/question_groups', {
+        params: {
+          fields: 'groupId',
+          limit: -1
+        }
+      });
+      
+      const existingGroupIds = new Set(data.data.map(g => g.groupId));
+      const allExist = groups.every(g => existingGroupIds.has(g.groupId));
+      
+      if (allExist) {
+        return;
+      }
+      
+      const noneExist = groups.every(g => !existingGroupIds.has(g.groupId));
+      
+      if (noneExist) {
+        const responses = await Promise.all(
+          groups.map((group) =>
+            axiosInstanceDirectus.post('/items/question_groups', group)
+          )
+        );
+      } else {
+        const groupsToCreate = groups.filter(g => !existingGroupIds.has(g.groupId));
+        const responses = await Promise.all(
+          groupsToCreate.map((group) =>
+            axiosInstanceDirectus.post('/items/question_groups', group)
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error processing question groups:", error);
+    }
+  };
   const handleApplicationStakeholders = async (applicationResults) => {
     try {
-      const existingStakeholdersResponse = await axiosInstanceDirectus.get('/application_stakeholders', {
+      const existingStakeholdersResponse = await axiosInstanceDirectus.get('/items/application_stakeholders', {
         params: {
           fields: ['id', 'applicationId', 'email', 'role'],
           filter: {
@@ -258,10 +358,10 @@ const DataUploadPage = () => {
           const existingStakeholder = existingStakeholders.find(
             s => s.applicationId === applicationId && s.email === email && s.role === role
           );
-  
+
           if (existingStakeholder) {
             stakeholderUpdates.push(
-              axiosInstanceDirectus.patch(`/application_stakeholders/${existingStakeholder.id}`, {
+              axiosInstanceDirectus.patch(`/items/application_stakeholders/${existingStakeholder.id}`, {
                 applicationId: applicationId,
                 email: email,
                 role: role 
@@ -269,7 +369,7 @@ const DataUploadPage = () => {
             );
           } else {
             stakeholderUpdates.push(
-              axiosInstanceDirectus.post('/application_stakeholders', {
+              axiosInstanceDirectus.post('/items/application_stakeholders', {
                 applicationId: applicationId,
                 email: email,
                 role: role 
@@ -280,19 +380,21 @@ const DataUploadPage = () => {
       }
       
       await Promise.all(stakeholderUpdates);
-  
+
     } catch (error) {
       console.error('Error updating stakeholders:', error);
-      alert('Warning: Application data was saved but there was an issue updating stakeholders');
+      toast.warning('Application data was saved, but stakeholders could not be updated', {
+        autoClose: 7000  // Longer duration for important warnings
+      });
     }
   };
   const handleUnMappedFields = async (unMappedData) => {
     try {
       for (const item of unMappedData) {
         const { appId, ...fields } = item;
-  
+
         try {
-          const response = await axiosInstanceDirectus.get(`/applications/${appId}`);
+          const response = await axiosInstanceDirectus.get(`/items/applications/${appId}`);
           const currentApp = response.data.data;
           const updatedFields = {
             unMappedCMDBFields: {
@@ -300,8 +402,8 @@ const DataUploadPage = () => {
               ...fields,                               
             },
           };
-  
-          await axiosInstanceDirectus.patch(`/applications/${appId}`, updatedFields);
+
+          await axiosInstanceDirectus.patch(`/items/applications/${appId}`, updatedFields);
         } catch (error) {
           console.error(`❌ Skipped appId ${appId}:`, error.message);
         }
@@ -354,29 +456,33 @@ const DataUploadPage = () => {
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-sm">
-          {isUploaded ? (
-            <UploadSummary
-              createdCount={createdCount}
-              updatedCount={updatedCount}
-              uploadType={uploadType}
-            />
+            {isUploading ? (
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mb-4"></div>
+                <p className="text-gray-700">Processing upload, please wait...</p>
+              </div>
+            ) : isUploaded ? (
+              <UploadSummary
+                createdCount={createdCount}
+                updatedCount={updatedCount}
+                uploadType={uploadType}
+              />
             ) : (
               <>
-              <FieldMappingConfigurationContainer 
-                uploadType={uploadType}
-                onMappingComplete={setMappedData}
-                onUnmappedData={setUnMappedData}
-                onFileSelect={setFile}
-              />
-              <UploadCSV 
-                apiUrl={apiEndpoints[uploadType]} 
-                file={file} 
-                mappedData={mappedData}
-                onUpload={handleUpload}
-              />
+                <FieldMappingConfigurationContainer 
+                  uploadType={uploadType}
+                  onMappingComplete={setMappedData}
+                  onUnmappedData={setUnMappedData}
+                  onFileSelect={setFile}
+                />
+                <UploadCSV 
+                  apiUrl={apiEndpoints[uploadType]} 
+                  file={file} 
+                  mappedData={mappedData}
+                  onUpload={handleUpload}
+                />
               </>
             )}
-            
           </div>
         </div>
       </div>

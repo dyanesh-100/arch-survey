@@ -39,7 +39,7 @@ const SurveyInitializingComponent = ({ applicationById }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const existingUsersRes = await axios.get('http://localhost:8055/users', {
+      const existingUsersRes = await axiosInstanceDirectus.get('/users', {
         withCredentials: true
       });
       const existingEmails = existingUsersRes.data?.data?.map(user => user.email);
@@ -47,8 +47,8 @@ const SurveyInitializingComponent = ({ applicationById }) => {
         !existingEmails.includes(stakeholder.email)
       );
       for (const stakeholder of newStakeholders) {
-        await axios.post(
-          'http://localhost:8055/users/invite',
+        await axiosInstanceDirectus.post(
+          '/users/invite',
           {
             email: stakeholder.email,
             role: INVITE_ROLE_ID,
@@ -57,7 +57,7 @@ const SurveyInitializingComponent = ({ applicationById }) => {
         );
       }
       await axiosInstanceDirectus.patch(
-        `/applications/${applicationById.applicationId}`,
+        `/items/applications/${applicationById.applicationId}`,
         {
           surveyStatus: 'Survey started'
         }

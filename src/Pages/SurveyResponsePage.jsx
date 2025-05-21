@@ -8,7 +8,7 @@ const SurveyResponsePage = () => {
 
   useEffect(() => {
     axiosInstanceDirectus
-      .get(`/survey_responses`)
+      .get(`/items/survey_responses`)
       .then((response) => {
         const responseData = response.data.data || response.data;
         const fetchedData = Array.isArray(responseData) ? responseData : [responseData];

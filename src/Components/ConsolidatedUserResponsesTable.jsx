@@ -82,7 +82,7 @@ const ConsolidatedUserResponsesTable = ({
     }
     return response || "N/A";
   };
-
+  
   const isResponseDeleted = (evaluation_parameter, responseValue) => {
     return deletedResponses[`${evaluation_parameter}_${responseValue}`];
   };
@@ -92,17 +92,40 @@ const ConsolidatedUserResponsesTable = ({
       const adminResponse = adminsResponse.response.find(
         r => r.evaluation_parameter === evaluation_parameter
       );
-      return adminResponse ? [{ response: adminResponse.response }] : [];
+      return adminResponse ? [{ 
+        response: adminResponse.response,
+        userName: adminsResponse.userName,
+        role: adminsResponse.role
+      }] : [];
     }
     
-    const originalResponses = groupedResponses[evaluation_parameter] || [];
+    const responses = [];
+    
+    // Add original responses with user info
+    surveyResponseByAppId.forEach(userResponse => {
+      const foundResponse = userResponse.response.find(
+        r => r.evaluation_parameter === evaluation_parameter
+      );
+      if (foundResponse) {
+        responses.push({
+          response: foundResponse.response,
+          userName: userResponse.userName,
+          role: userResponse.role
+        });
+      }
+    });
+    
+    // Add any manually added responses
     const added = addedResponses[evaluation_parameter] || [];
     const formattedAdded = added.map((response) =>
-      Array.isArray(response) ? { response: response } : { response }
+      Array.isArray(response) 
+        ? { response: response.join(", ") } 
+        : { response }
     );
-    return [...originalResponses, ...formattedAdded];
+    
+    return [...responses, ...formattedAdded];
   };
- 
+  
   const getUniqueResponses = (evaluation_parameter) => {
     const responses = getAllResponsesForField(evaluation_parameter);
     const responseGroups = {};
@@ -133,7 +156,10 @@ const ConsolidatedUserResponsesTable = ({
   
   const handleSubmitWithValidation = () => {
     if (hasConflicts) {
-      alert(`Please resolve all conflicts before submitting`);
+      toast.error('Please resolve all conflicts before submitting', {
+        position: 'top-right',
+        autoClose: 5000,
+      });
       return;
     }
     handleSubmit();
@@ -143,7 +169,10 @@ const ConsolidatedUserResponsesTable = ({
     const adminResponse = surveyResponseByAppId.find(item => item.role === "Admin");
     
     if (!adminResponse) {
-      alert("No admin response found to download");
+      toast.warn('No admin response found to download', {
+        position: 'top-right',
+        autoClose: 4000,
+      });
       return;
     }
     const headers = ["appId", ...adminResponse.response.map(item => item.evaluation_parameter)];
@@ -197,7 +226,7 @@ const ConsolidatedUserResponsesTable = ({
         <table className="min-w-full bg-white border border-gray-300 shadow-md rounded-md">
           <thead className="bg-gray-200">
             <tr>
-              <th className="border p-3 text-left text-gray-600">Field Name</th>
+              <th className="border p-3 text-left  text-gray-600">Field Name</th>
               <th className="border p-3 text-left text-gray-600">Responses</th>
             </tr>
           </thead>
@@ -211,30 +240,47 @@ const ConsolidatedUserResponsesTable = ({
               return (
                 <React.Fragment key={evaluation_parameter}>
                   {hasResponses ? (
-                    uniqueResponses.map((responseValue, idx) => (
-                      <tr
-                        key={`${evaluation_parameter}_${responseValue}_${idx}`}
-                        className={`hover:bg-gray-50 ${isConflictField ? "bg-red-50" : ""}`}
-                      >
-                        {idx === 0 && (
-                          <td
-                            rowSpan={uniqueResponses.length}
-                            className="border p-3 text-gray-700"
-                          >
-                            {evaluation_parameter}
+                    uniqueResponses.map((responseValue, idx) => {
+                      const matchingResponses = getAllResponsesForField(evaluation_parameter)
+                        .filter(r => formatResponse(r.response) === responseValue && !isResponseDeleted(evaluation_parameter, responseValue));
+
+                      return (
+                        <tr
+                          key={`${evaluation_parameter}_${responseValue}_${idx}`}
+                          className={`hover:bg-gray-50 ${isConflictField ? "bg-red-50" : ""}`}
+                        >
+                          {idx === 0 && (
+                            <td
+                              rowSpan={uniqueResponses.length}
+                              className="border p-3 text-base font-medium min-w-[100px]"
+                            >
+                              {evaluation_parameter}
+                            </td>
+                          )}
+                          <td className="border p-3 text-gray-700">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center space-x-4">
+                                <div className="text-base font-medium min-w-[100px]">{responseValue}</div>
+                                <div className="text-sm text-gray-500">
+                                  {matchingResponses.map((r, i) => (
+                                    <span key={i}>
+                                      {r.userName} ({r.role})
+                                      {i < matchingResponses.length - 1 ? ', ' : ''}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => onDeleteResponse(evaluation_parameter, responseValue)}
+                                className="text-red-500 hover:text-red-700 ml-2 cursor-pointer"
+                              >
+                                <Trash2 className="h-5 w-5" />
+                              </button>
+                            </div>
                           </td>
-                        )}
-                        <td className="border p-3 text-gray-700 flex justify-between items-center">
-                          {responseValue}
-                          <button
-                            onClick={() => onDeleteResponse(evaluation_parameter, responseValue)}
-                            className="text-red-500 hover:text-red-700 ml-2 cursor-pointer"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr key={evaluation_parameter} className="hover:bg-gray-50">
                       <td className="border p-3 text-gray-700">{evaluation_parameter}</td>
@@ -252,16 +298,19 @@ const ConsolidatedUserResponsesTable = ({
                             onCancel={() => setEditingField(null)}
                           />
                         ) : (
-                          <button
-                            onClick={() => setEditingField({
-                              name: evaluation_parameter,
-                              ...fieldType,
-                            })}
-                            className="text-blue-500 hover:text-blue-700 flex items-center cursor-pointer"
-                          >
-                            <Plus className="h-5 w-5 mr-1" />
-                            Add Response
-                          </button>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-400">No responses yet</span>
+                            <button
+                              onClick={() => setEditingField({
+                                name: evaluation_parameter,
+                                ...fieldType,
+                              })}
+                              className="text-blue-500 hover:text-blue-700 flex items-center cursor-pointer"
+                            >
+                              <Plus className="h-5 w-5 mr-1" />
+                              Add Response
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
