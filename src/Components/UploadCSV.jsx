@@ -1,6 +1,7 @@
 import { toast } from "react-toastify";
 
 const UploadCSV = ({file, mappedData, onUpload}) => {  
+
   const handleUpload = () => {
     if (!file) {
       toast.error('Please select a file first', {
@@ -39,7 +40,7 @@ const UploadCSV = ({file, mappedData, onUpload}) => {
     }
   };
   return (
-    <button
+   <button
       onClick={handleUpload}
       disabled={!file || !mappedData}
       className={`w-full py-3 px-4 rounded-lg text-white font-medium ${
@@ -48,8 +49,11 @@ const UploadCSV = ({file, mappedData, onUpload}) => {
           : "bg-green-600 hover:bg-green-700"
       }`}
     >
-      Upload Data
+      {file && !mappedData 
+        ? "Change one field to select field (i.e. default value) in file field and change back to its original field name"
+        : "Upload Data"}
     </button>
+
   );
 };
 

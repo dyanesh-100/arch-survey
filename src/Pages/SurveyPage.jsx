@@ -12,6 +12,7 @@ import ApplicationResponseComponent from "../Components/ApplicationResponseCompo
 import SurveyInitializingComponent from "../Components/SurveyInitializingComponent";
 import SurveyFollowUpComponent from "../Components/SurveyFollowUpComponent";
 import { toast } from "react-toastify";
+import { ADMIN_UUID } from "../App";
 
 const SurveyPage = () => {
   const location = useLocation();
@@ -241,7 +242,7 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
     try {
       let action;
       const adminResponseId = surveyResponseByAppId.find(item => item.role === "Admin")?.responseId;
-      if (surveyResponseByAppId?.length > 0 && userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" &&
+      if (surveyResponseByAppId?.length > 0 && userData.role === ADMIN_UUID &&
         (isFinalResponseSubmitted || adminResponseId !== undefined)) {
         await axiosInstanceDirectus.patch(`/items/survey_responses/${adminResponseId}`, {
           response: consolidatedResponses,
@@ -314,7 +315,7 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
     (response) => response.userId === userData.id
   );
 
-  if (userResponse && !isEditing && userData.role != "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f") {
+  if (userResponse && !isEditing && userData.role != ADMIN_UUID) {
     return (
       <FallbackScreen
         message="You have successfully submitted your survey!"
@@ -342,21 +343,21 @@ const handleResponseChange = (group, evaluation_parameter, value) => {
           <ApplicationMetaDataComponent application={applicationById} />
           <TabNavigation
             ref={surveyRef}
-            groups={userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" 
+            groups={userData.role === ADMIN_UUID 
               ? ["Stakeholders","Survey Follow-up", "Survey Response"] 
               : filteredGroupNames}
-            selectedGroup={userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" 
+            selectedGroup={userData.role === ADMIN_UUID 
               ? selectedTab 
               : selectedGroup?.groupName}
             onSelectGroup={(group) => {
-              if (userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f") {
+              if (userData.role === ADMIN_UUID) {
                 setSelectedTab(group);
               } else {
                 setSelectedGroupIndex(filteredGroups.findIndex(g => g.groupName === group));
               }
             }}
           />
-          {userData.role === "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f" ? (
+          {userData.role === ADMIN_UUID ? (
             <>
               {selectedTab === "Stakeholders" && (
                 <SurveyInitializingComponent

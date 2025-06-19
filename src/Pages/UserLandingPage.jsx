@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGlobalContext } from "../Context/GlobalContext"; 
 import { useApiService } from "../Services/apiService";
 import { useNavigate } from 'react-router-dom';
 import LogoutButton from "../Components/LogoutButton";
-import { toast } from 'react-toastify';
+import {ChevronLeft, ChevronRight} from 'lucide-react';
 
 const UserLandingPage = () => {
   const { applications, userData } = useGlobalContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const isFirstRender = useRef(true);
+  const applicationsPerPage = 6;
   const navigate = useNavigate();
   const { fetchApplications, fetchUserData } = useApiService();
   
@@ -34,12 +35,36 @@ const UserLandingPage = () => {
       app.applicationId.toString().toLowerCase().includes(searchLower)
     );
   });
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredApplications.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredApplications.length / itemsPerPage);
+  useEffect(() => {
+      const pageFromURL = parseInt(new URLSearchParams(location.search).get('page')) || 1;
+      setCurrentPage(pageFromURL);
+    }, [location.search]);
+  
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+    if (searchQuery !== '') {
+      setCurrentPage(1);
+      navigate(`?page=1`);
+    }
+  }, [searchQuery]);
+  const indexOfLastApplication = currentPage * applicationsPerPage;
+  const indexOfFirstApplication = indexOfLastApplication - applicationsPerPage;
+
+  const currentApplications = filteredApplications.slice(
+    indexOfFirstApplication,
+    indexOfLastApplication
+  );
+
+  const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage);
+
+  const paginate = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    navigate(`?page=${pageNumber}`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-100 via-pink-100 to-orange-100 p-6">
@@ -82,12 +107,12 @@ const UserLandingPage = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {currentItems.length > 0 ? (
-                  currentItems.map((app) => (
+                {currentApplications.length > 0 ? (
+                  currentApplications.map((app) => (
                     <tr 
                       key={app.applicationId} 
                       className="hover:bg-orange-50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/survey/${app.uuid}`)}
+                      onClick={() => navigate(`/survey/${app.uuid}?page=${currentPage}`)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{app.applicationId}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{app.applicationName}</td>
@@ -110,37 +135,33 @@ const UserLandingPage = () => {
           </div>
           
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-6">
-              <nav className="inline-flex rounded-md shadow">
+          {filteredApplications.length > applicationsPerPage && (
+            <div className="px-5 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Showing <span className="font-medium">{indexOfFirstApplication + 1}</span> to{' '}
+                <span className="font-medium">
+                  {Math.min(indexOfLastApplication, filteredApplications.length)}
+                </span>{' '}
+                of <span className="font-medium">{filteredApplications.length}</span> results
+              </div>
+              <div className="flex space-x-2">
                 <button
                   onClick={() => paginate(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
                   Previous
                 </button>
-                {[...Array(totalPages).keys()].map((number) => (
-                  <button
-                    key={number}
-                    onClick={() => paginate(number + 1)}
-                    className={`px-4 py-2 border-t border-b border-gray-300 bg-white text-sm font-medium ${
-                      currentPage === number + 1
-                        ? 'bg-orange-100 text-orange-600 border-orange-200'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {number + 1}
-                  </button>
-                ))}
                 <button
                   onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
                 </button>
-              </nav>
+              </div>
             </div>
           )}
         </motion.div>

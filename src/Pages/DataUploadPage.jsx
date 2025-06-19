@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "react-feather";
 import UploadCSV from "../Components/UploadCSV";
@@ -7,8 +7,10 @@ import FieldMappingConfigurationContainer from '../Components/FieldMappingConfig
 import questions from "../assets/Images/questions-sample.jpg";
 import applications from "../assets/Images/applications-sample.jpg";
 import axiosInstanceDirectus from "../axiosInstanceDirectus";
+import { useApiService } from "../Services/apiService";
 
 const DataUploadPage = () => {
+  const { fetchApplications } = useApiService();
   const { uploadType } = useParams();
   const navigate = useNavigate();
   const [mappedData, setMappedData] = useState(null); 
@@ -24,16 +26,19 @@ const DataUploadPage = () => {
   };
   const instructions = {
     applications: [
-      "Ensure the CSV file contains all required application fields",
-      "The first row should be column headers",
-      "Required fields: name, email, submission_date",
-      "File size should not exceed 5MB"
+      "Ensure the file is in CSV (.csv) format",
+      "File size should not exceed 5MB",
+      "The first row should contain column headers",
+      "Required fields: application_name, application_id, application_description, application_department, business_unit, All the three stakeholder's email",
+      "If all the fields mapped already, To test field validation, Change one field to select field (i.e. default value) in file field and change back to its original field name"
     ],
     questions: [
-      "Ensure the CSV file contains all required question fields",
+      "Ensure the file is in CSV (.csv) format",
+      "File size should not exceed 5MB",
       "The first row should be column headers",
-      "Required fields: question_text, category, difficulty",
-      "File size should not exceed 5MB"
+      "Required fields: question,evaluation_parameter, response_type, options,question_group",
+      "If all the fields mapped already, To test field validation, Change one field to select field (i.e. default value) in file field and change back to its original field name"
+
     ]
   };
   const sampleFormat = {
@@ -71,7 +76,21 @@ const DataUploadPage = () => {
     const nextIdNumber = 105 + (existingGroups.length - 5);
     return `grp-${nextIdNumber}`;
   };
+  useEffect(() => {
+    const uploadInfoRaw = localStorage.getItem("uploadInfo");
 
+    if (uploadInfoRaw) {
+      const uploadInfo = JSON.parse(uploadInfoRaw);
+
+      if (uploadInfo.markUploaded) {
+        setIsUploaded(true);
+        setCreatedCount?.(uploadInfo.createdCount);
+        setUpdatedCount?.(uploadInfo.updatedCount);
+      }
+
+      localStorage.removeItem("uploadInfo"); 
+    }
+  }, []);
   const transformQuestionsData = (data) => {
     return data.map(item => {
       const transformedItem = { ...item };
@@ -176,9 +195,14 @@ const DataUploadPage = () => {
 
       const createdCount = results.filter(r => r.action === 'created').length;
       const updatedCount = results.filter(r => r.action === 'updated').length;
-      setCreatedCount(createdCount);
-      setUpdatedCount(updatedCount);
-      setIsUploaded(true);
+      const uploadInfo = {
+        markUploaded: true,
+        createdCount,
+        updatedCount
+      };
+
+      localStorage.setItem("uploadInfo", JSON.stringify(uploadInfo));
+      window.location.reload();
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -384,7 +408,7 @@ const DataUploadPage = () => {
     } catch (error) {
       console.error('Error updating stakeholders:', error);
       toast.warning('Application data was saved, but stakeholders could not be updated', {
-        autoClose: 7000  // Longer duration for important warnings
+        autoClose: 7000  
       });
     }
   };
@@ -405,7 +429,7 @@ const DataUploadPage = () => {
 
           await axiosInstanceDirectus.patch(`/items/applications/${appId}`, updatedFields);
         } catch (error) {
-          console.error(`❌ Skipped appId ${appId}:`, error.message);
+          console.error(`Skipped appId ${appId}:`, error.message);
         }
       }
       return { success: true };
@@ -419,7 +443,7 @@ const DataUploadPage = () => {
       <div className="max-w-6xl mx-auto">
         <button 
           onClick={() => navigate('/landingpage')}
-          className="flex items-center text-blue-600 hover:text-blue-800 mb-6"
+          className="flex items-center text-blue-600 hover:text-blue-800 mb-6 cursor-pointer"
         >
           <ArrowLeft className="mr-2" size={18} />
           Back to Dashboard

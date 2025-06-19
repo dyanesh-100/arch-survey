@@ -8,6 +8,8 @@ import SurveyStatus from "../Components/SurveyStatus"
 import UploadButton from "../Components/UploadButton";
 import axiosInstanceDirectus from "../axiosInstanceDirectus";
 import { Plus, ChevronLeft, ChevronRight, Trash2, Search, Check } from 'lucide-react';
+import ConfirmToast from "../Components/ConfirmToast";
+import { toast } from "react-toastify";
 
 const ApplicationSearchPage = () => {
   const { applications, userData, setApplications } = useGlobalContext();
@@ -17,11 +19,11 @@ const ApplicationSearchPage = () => {
   const { fetchApplications, fetchUserData } = useApiService();
   const [currentPage, setCurrentPage] = useState(1);
   const isFirstRender = useRef(true);
-  const applicationsPerPage = 8;
+  const applicationsPerPage = 6;
   const [columnSearchQuery, setColumnSearchQuery] = useState("");
   const [showColumnSelector, setShowColumnSelector] = useState(false);
   const columnSelectorRef = useRef(null);
-  
+
   const defaultColumns = [
     { key: 'applicationId', label: 'Application ID' },
     { key: 'applicationName', label: 'Application Name' },
@@ -40,9 +42,9 @@ const ApplicationSearchPage = () => {
 
   const [availableColumns, setAvailableColumns] = useState([]);
   useEffect(() => {
-  const newPage = parseInt(new URLSearchParams(location.search).get('page')) || 1;
-  setCurrentPage(newPage);
-}, [location.search]);
+    const newPage = parseInt(new URLSearchParams(location.search).get('page')) || 1;
+    setCurrentPage(newPage);
+  }, [location.search]);
   useEffect(() => {
     localStorage.setItem('selectedApplicationColumns', JSON.stringify(selectedColumns));
   }, [selectedColumns]);
@@ -55,8 +57,8 @@ const ApplicationSearchPage = () => {
   
   useEffect(() => {
     fetchApplications(); 
-  }, [location.pathname, location.search]);
 
+  }, [applications]);
   useEffect(() => {
     if (applications.length > 0) {
       const allKeys = new Set();
@@ -98,8 +100,20 @@ const ApplicationSearchPage = () => {
     e.stopPropagation();
     try {
       await axiosInstanceDirectus.delete(`/items/applications/${applicationId}`);
-      setApplications(applications.filter(app => app.applicationId !== applicationId));
+      const updatedApplications = applications.filter(app => app.applicationId !== applicationId);
+      setApplications(updatedApplications);
+      const updatedFiltered = updatedApplications.filter(app => 
+        app.applicationName?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      const maxPage = Math.ceil(updatedFiltered.length / applicationsPerPage);
+      if (currentPage > maxPage) {
+        const newPage = Math.max(1, maxPage);
+        setCurrentPage(newPage);
+        navigate(`?page=${newPage}`);
+      }
+      toast.success(`Application ${applicationId} deleted successfully`);
     } catch (error) {
+      toast.error(`Failed to delete application: ${error.message}`);
       console.error("Error deleting application:", error);
     }
   };
@@ -151,6 +165,16 @@ const ApplicationSearchPage = () => {
     setCurrentPage(pageNumber);
     navigate(`?page=${pageNumber}`);
   };
+  useEffect(() => {
+    if (filteredApplications.length > 0) {
+      const maxPage = Math.ceil(filteredApplications.length / applicationsPerPage);
+      if (currentPage > maxPage) {
+        const newPage = Math.max(1, maxPage);
+        setCurrentPage(newPage);
+        navigate(`?page=${newPage}`);
+      }
+    }
+  }, [filteredApplications.length, currentPage, navigate]);
   useEffect(() => {
     const handleClickOutside = (event) => {
         if (columnSelectorRef.current && !columnSelectorRef.current.contains(event.target)) {
@@ -397,9 +421,10 @@ const ApplicationSearchPage = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm(`Do you want to delete application ${application.applicationId}?`)) {
-                                handleDelete(application.applicationId, e);
-                              }
+                              ConfirmToast(
+                                `Do you want to delete application ${application.applicationId}?`, 
+                                () => handleDelete(application.applicationId, e)
+                              );
                             }}
                             className="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-gray-100 transition-colors"
                             title="Delete application"
@@ -412,7 +437,7 @@ const ApplicationSearchPage = () => {
                   </tbody>
                 </table>
               </div>
-              {filteredApplications.length > applicationsPerPage && (
+              {filteredApplications.length > 0 && (
                 <div className="px-5 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
                   <div className="text-sm text-gray-700">
                     Showing <span className="font-medium">{indexOfFirstApplication + 1}</span> to{' '}

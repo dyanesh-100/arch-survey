@@ -24,6 +24,7 @@ const FieldMapper = ({
                 <td className="py-2 px-4">
                   <input
                     type="text"
+                    disabled
                     value={mapping.dbField}
                     onChange={(e) => {
                       const newMappings = [...mappings];

@@ -16,7 +16,7 @@ const SurveyQuestionsComponent = ({
   };
   
   const handleChange = (evaluation_parameter, value, isCheckbox) => {
-    if (previewMode) return; // Don't handle changes in preview mode
+    if (previewMode) return;
     if (evaluation_parameter === "app_name") return; 
 
     if (isCheckbox) {
@@ -36,7 +36,6 @@ const SurveyQuestionsComponent = ({
 
   const getInputValue = (question) => {
     if (previewMode) {
-      // Return placeholder values for preview mode
       switch (question.response_type) {
         case "text":
         case "number":

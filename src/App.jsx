@@ -14,6 +14,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const ADMIN_UUID = "d1c8c9c4-b3d3-419f-bbdb-bdf571d2619f";
+// export const ADMIN_UUID = "6baecec2-6569-4f03-9a48-04ebc1e1256b";
 const App = () => {
   const [role, setRole] = useState(null);
   const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
