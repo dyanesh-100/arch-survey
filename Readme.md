@@ -27,7 +27,16 @@ A **survey-driven web platform** designed to help enterprises assess, streamline
 
 ## 🎯 Impact
 
-- ✅ Reduced manual assessment efforts by **60%**
-- ✅ Accelerated decision-making for application portfolio management
-- ✅ Improved alignment between IT infrastructure and business strategy
+- ✅ Reduced manual assessment efforts by **60%**  
+- ✅ Accelerated decision-making for application portfolio management  
+- ✅ Improved alignment between IT infrastructure and business strategy  
 
+---
+
+## 📂 Additional Resources
+
+- 📄 **Project Setup Guide**  
+  A detailed PDF guide for setting up and running this project is included in this repository.
+
+- 🔗 **Directus Migration Guide Repository**  
+  For schema migration and Directus setup, refer to the dedicated guide here: [Directus Migration Guide](https://github.com/dyanesh-100/directus-migration-guide)  
